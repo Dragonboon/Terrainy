@@ -15,6 +15,8 @@ var sculpt_operation := 0
 var sculpt_strength := 2.0
 var sculpt_finished: Callable
 var flatten_height := 0.0
+var hover_valid := false
+var hover_position := Vector3.ZERO
 var brush_texture: Texture2D
 var _brush_image: Image
 var stroke_origin: ArrayMesh
@@ -39,15 +41,31 @@ func handles(object: Object) -> bool:
 
 
 func edit(object: Object) -> void:
+	var next_target := object as MeshInstance3D if handles(object) else null
+	if next_target == target:
+		return
 	if stroke_active:
 		_finish_stroke()
-	target = object as MeshInstance3D if handles(object) else null
+	target = next_target
+	hover_valid = false
 
 
 func set_active(value: bool) -> void:
 	if active and not value and stroke_active:
 		_finish_stroke()
 	active = value
+	if not active:
+		hover_valid = false
+
+
+func update_hover(camera: Camera3D, mouse_position: Vector2) -> void:
+	hover_valid = false
+	if not active or not is_instance_valid(target) or not target.mesh is ArrayMesh:
+		return
+	var contact := _hit(camera, mouse_position)
+	if not contact.is_empty():
+		hover_position = contact.position
+		hover_valid = true
 
 
 func forward_input(camera: Camera3D, event: InputEvent) -> int:
@@ -58,7 +76,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			# Allow viewport camera navigation with Alt, rather than hijacking editor controls.
 			if event.alt_pressed:
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
-			var hit := _hit(camera, event.position)
+						var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
 			if hit.is_empty():
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
 			stroke_origin = target.mesh
@@ -77,7 +95,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 		if last_mouse_point.distance_squared_to(event.position) < 16.0:
 			return EditorPlugin.AFTER_GUI_INPUT_STOP
 		last_mouse_point = event.position
-		var hit := _hit(camera, event.position)
+				var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
 		if not hit.is_empty():
 			_apply(hit.position)
 		return EditorPlugin.AFTER_GUI_INPUT_STOP

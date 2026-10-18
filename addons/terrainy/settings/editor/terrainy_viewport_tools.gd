@@ -263,6 +263,10 @@ func _activate_paint_target() -> void:
 		painter.set_active(false)
 		_status("Generate a mesh before painting.")
 		return
+	if tool == Tool.SCULPT and not mesh.has_meta(&"terrainy_height_resolution"):
+		painter.set_active(false)
+		_status("Sculpt needs a dock-generated mesh. Regenerate this terrain first.")
+		return
 	if selected_mesh != mesh and not _switching_selection:
 		_switching_selection = true
 		plugin.select_terrain_mesh(mesh)
