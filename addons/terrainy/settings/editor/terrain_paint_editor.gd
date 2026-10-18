@@ -158,7 +158,7 @@ func _finish_stroke() -> void:
 		var new_collision: Shape3D
 		var collision_node := target.get_node_or_null("TerrainyCollider/Shape") as CollisionShape3D
 		if sculpt_enabled and resolution > 0:
-						if collision_node != null:
+			if collision_node != null:
 				old_collision = collision_node.shape
 			if sculpt_finished.is_valid():
 				sculpt_finished.call(target)
