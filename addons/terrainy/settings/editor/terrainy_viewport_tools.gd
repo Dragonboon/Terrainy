@@ -50,6 +50,9 @@ var physics_resolution: SpinBox
 var physics_enabled: CheckBox
 var status: Label
 var generate_button: Button
+var random_generation_check: CheckBox
+var last_generation_seed: int = 2026
+var last_generated_profile: TerrainConfiguration
 var underwater_check: CheckBox
 var _busy := false
 var _switching_selection := false
@@ -187,7 +190,12 @@ func _create_context() -> void:
 	underwater_check.tooltip_text = "Generate a smooth volcanic underwater base. Advanced depth and roughness controls: Edit Profile."
 	underwater_check.toggled.connect(_toggle_underwater)
 	generation_row.add_child(underwater_check)
-	generate_button = _add_button(generation_row, "Generate", "Rebuild mesh and collision from the selected profile. Replaces paint.", _generate)
+	generate_button = _add_button(generation_row, "Generate New", "Create a new seeded variation; manual edits are protected.", _generate)
+	random_generation_check = CheckBox.new()
+	random_generation_check.text = "Vary"
+	random_generation_check.button_pressed = true
+	random_generation_check.tooltip_text = "Generate a fresh seeded variation. Turn off to reproduce the last generated seed and parameters."
+	generation_row.add_child(random_generation_check)
 	context.add_child(generation_row)
 	tool_rows.append(generation_row)
 
@@ -480,39 +488,71 @@ func _edit_profile() -> void:
 
 
 func _generate() -> void:
-	if _busy:
+	if _busy or not is_instance_valid(generator):
 		return
 	var mesh := _target()
 	if mesh == null:
-		_status("Add a terrain mesh first.")
+		_create_target()
+		mesh = _target()
+	if mesh == null:
+		_status("Unable to create a terrain target.")
 		return
 	if current_profile == null:
 		_choose_profile(profile_select.selected)
 	if current_profile == null:
 		_status("Choose a terrain configuration.")
 		return
+	# Never replace a manually painted or sculpted saved terrain through
+	# one-click exploration. Create a sibling and keep the source intact.
+	var variation: bool = random_generation_check.button_pressed
+	if mesh.mesh != null and variation:
+		_create_target()
+		mesh = _target()
+	if mesh == null:
+		return
 	_busy = true
 	generate_button.disabled = true
-	var result: Dictionary = Builder.build(current_profile)
+	var selected_profile: TerrainConfiguration = current_profile.duplicate(true) as TerrainConfiguration
+	if selected_profile is TerrainNoiseConfiguration:
+		var noise_profile := selected_profile as TerrainNoiseConfiguration
+		if variation:
+			var rng := RandomNumberGenerator.new()
+			rng.randomize()
+			last_generation_seed = rng.randi_range(1, 2000000000)
+			if noise_profile.noise != null:
+				noise_profile.noise.seed = last_generation_seed
+				noise_profile.noise.frequency *= rng.randf_range(0.84, 1.18)
+				noise_profile.noise.fractal_gain = clampf(noise_profile.noise.fractal_gain * rng.randf_range(0.85, 1.12), 0.1, 0.8)
+			if noise_profile.detail_noise != null:
+				noise_profile.detail_noise.seed = last_generation_seed + 1013
+			noise_profile.detail_strength *= rng.randf_range(0.75, 1.15)
+			noise_profile.max_slope_degrees = clampf(noise_profile.max_slope_degrees + rng.randf_range(-3.0, 3.0), 18.0, 50.0)
+			noise_profile.randomize_noise_seed = false
+		elif last_generated_profile is TerrainNoiseConfiguration:
+			selected_profile = last_generated_profile.duplicate(true) as TerrainConfiguration
+		else:
+			last_generation_seed = noise_profile.noise.seed if noise_profile.noise != null else 0
+	last_generated_profile = selected_profile.duplicate(true) as TerrainConfiguration
+	var result: Dictionary = Builder.build(selected_profile)
 	if result.get("error", FAILED) == OK:
 		mesh.mesh = result["mesh"]
-
-
 		mesh.add_to_group(&"terrains", true)
-		generator.terrains[mesh] = current_profile
-		if current_profile.generate_collision:
-			_update_collision(mesh, result["heights"], result["resolution"], current_profile)
+		generator.terrains[mesh] = selected_profile
+		if selected_profile.generate_collision:
+			_update_collision(mesh, result["heights"], result["resolution"], selected_profile)
 		else:
 			_clear_collision(mesh)
-		var storage_error: Error = Storage.persist_terrain(mesh)
-		if storage_error == OK and current_profile is TerrainNoiseConfiguration:
-			_sync_underwater(mesh, current_profile as TerrainNoiseConfiguration)
-		_status("Generated %d cells/axis. Save scene." % result["resolution"] if storage_error == OK else "Generated, but resource export failed: %s" % error_string(storage_error))
+		var save_error: Error = Storage.persist_terrain(mesh)
+		if save_error == OK and selected_profile is TerrainNoiseConfiguration:
+			_sync_underwater(mesh, selected_profile as TerrainNoiseConfiguration)
+		if save_error == OK:
+			_status("Generated seed %d · %d cells/axis · variant %s. Save scene." % [last_generation_seed, result["resolution"], "new" if variation else "repeat"])
+		else:
+			_status("Generated but resource export failed: %s" % error_string(save_error))
 	else:
 		_status("Generation failed. Check Resource settings.")
 	_busy = false
 	generate_button.disabled = false
-
 
 func _sync_physics_ui() -> void:
 	var mesh := _target()
