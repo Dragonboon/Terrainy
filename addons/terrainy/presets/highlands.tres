@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="TerrainNoiseConfiguration" format=3]
 
 [ext_resource type="Script" path="res://addons/terrainy/src/terrain/configurations/terrain_noise_configuration.gd" id="1_script"]
-[ext_resource type="Shader" path="res://addons/terrainy/shaders/terrain/vertex_paint.gdshader" id="2_shader"]
+[ext_resource type="Shader" path="res://addons/terrainy/shaders/terrain/editor_four_layers.gdshader" id="2_shader"]
 
 [sub_resource type="FastNoiseLite" id="MainNoise"]
 seed = 8812
