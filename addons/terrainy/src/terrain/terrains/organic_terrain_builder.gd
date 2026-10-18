@@ -227,6 +227,18 @@ class _Source:
 		if config.radial_shape:
 			var centered := (uv - Vector2(0.5, 0.5)) * 2.0
 			height *= clampf(1.0 - pow(centered.length(), config.radial_falloff_power), 0.0, 1.0)
+		if config is TerrainNoiseConfiguration:
+			var island := config as TerrainNoiseConfiguration
+			if island.generate_underwater_foundation:
+				# Rounded, seeded coastline inside the regular editable grid.
+				# The XZ footprint stays regular for Sculpt and collision.
+				var centered := (uv - Vector2(0.5, 0.5)) * 2.0
+				var angle := atan2(centered.y, centered.x)
+				var phase := float(main_noise.seed % 3581) * 0.009 if main_noise != null else 0.0
+				var coastline := 0.78 + 0.085 * sin(angle * 3.0 + phase) + 0.045 * sin(angle * 5.0 - phase * 0.7)
+				var radial_distance := centered.length()
+				var shore: float = 1.0 - smoothstep(coastline - 0.13, coastline + 0.10, radial_distance)
+				height = island.underwater_sea_level - 2.0 + maxf(height, 0.0) * shore + 2.0 * shore
 		return height
 
 	func _prepare_image(texture: Texture2D) -> Image:

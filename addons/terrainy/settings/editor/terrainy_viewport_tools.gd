@@ -505,7 +505,7 @@ func _generate() -> void:
 	# Never replace a manually painted or sculpted saved terrain through
 	# one-click exploration. Create a sibling and keep the source intact.
 	var variation: bool = random_generation_check.button_pressed
-	if mesh.mesh != null and variation:
+	if mesh.mesh != null:
 		_create_target()
 		mesh = _target()
 	if mesh == null:
