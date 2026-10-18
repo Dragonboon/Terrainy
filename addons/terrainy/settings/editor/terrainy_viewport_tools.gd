@@ -205,7 +205,7 @@ func _create_context() -> void:
 	context.add_child(collision_row)
 	tool_rows.append(collision_row)
 
-var sculpt_row := HFlowContainer.new()
+	var sculpt_row := HFlowContainer.new()
 	_add_label(sculpt_row, "Sculpt")
 	sculpt_mode = OptionButton.new()
 	for name in ["Raise", "Lower", "Smooth", "Flatten"]:

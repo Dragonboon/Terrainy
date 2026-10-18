@@ -23,7 +23,3 @@ config/description="Generate simple 3D terrain patches and optionally paint mate
 config/version="1.5.1"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="uid://bu5mpj5mx5ywo"
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/terrainy/plugin.cfg")

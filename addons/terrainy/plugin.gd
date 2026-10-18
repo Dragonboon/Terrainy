@@ -119,4 +119,3 @@ func _forward_3d_draw_over_viewport(overlay: Control) -> void:
 	var label := "PAINT" if viewport_tools.tool == 2 else "SCULPT"
 	label += "  •  radius %.1f m" % paint_editor.radius
 	overlay.draw_string(font, center + Vector2(30, -10), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)
-
