@@ -649,7 +649,9 @@ func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
 	if profile != null and profile.generate_collision:
 		var heights: PackedFloat32Array = Storage.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
 		_update_collision(mesh, heights, Storage.mesh_resolution(mesh), profile)
-	_status("Sculpt complete. Collision updated; save the scene.")
+	if profile is TerrainNoiseConfiguration:
+		_sync_underwater(mesh, profile as TerrainNoiseConfiguration)
+	_status("Sculpt complete. Collision and seabed updated; save the scene.")
 
 
 func _select_custom_brush(resource: Resource) -> void:
