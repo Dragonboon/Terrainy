@@ -840,11 +840,11 @@ func _sync_underwater(mesh: MeshInstance3D, config: TerrainNoiseConfiguration) -
 		existing.owner = plugin.get_editor_interface().get_edited_scene_root()
 	existing.mesh = result["mesh"]
 	existing.add_to_group(&"terrainy_underwater", true)
-	var collider := existing.get_node_or_null("SeabedCollider/Shape") as CollisionShape3D
+	var collider := existing.get_node_or_null("TerrainyCollider/Shape") as CollisionShape3D
 	if result["collision"] != null:
 		if collider == null:
 			var body := StaticBody3D.new()
-			body.name = "SeabedCollider"
+			body.name = "TerrainyCollider"
 			existing.add_child(body)
 			body.owner = plugin.get_editor_interface().get_edited_scene_root()
 			collider = CollisionShape3D.new()

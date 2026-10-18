@@ -170,7 +170,7 @@ func _process_next(token: int) -> void:
 			seabed.add_to_group(&"terrainy_underwater", true)
 			if foundation["collision"] != null:
 				var seabed_body := StaticBody3D.new()
-				seabed_body.name = "SeabedCollider"
+				seabed_body.name = "TerrainyCollider"
 				seabed.add_child(seabed_body)
 				seabed_body.owner = plugin.get_editor_interface().get_edited_scene_root()
 				var seabed_shape := CollisionShape3D.new()
