@@ -11,6 +11,9 @@ var active := false
 var radius: float = 12.0
 var strength: float = 0.35
 var layer: int = 0
+var secondary_layer: int = -1
+var secondary_mix: float = 0.35
+var organic_variation: float = 0.3
 var sculpt_enabled := false
 var sculpt_operation := 0
 var sculpt_strength := 2.0
@@ -167,7 +170,7 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 		else:
 			changed = _session.sculpt(local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
 	else:
-		changed = _session.paint(local_position, radius, strength, layer, _brush_image)
+		changed = _session.paint(local_position, radius, strength, layer, _brush_image, secondary_layer, secondary_mix, organic_variation)
 	if not changed:
 		return
 	var now: int = Time.get_ticks_msec()
