@@ -3,6 +3,7 @@ extends RefCounted
 ## Brush input controller only. Tool UI belongs to TerrainyViewportTools.
 const Painter = preload("res://addons/terrainy/src/terrain/brush/terrain_vertex_painter.gd")
 const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
+const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
 
 var plugin: EditorPlugin
 var target: MeshInstance3D
@@ -24,6 +25,8 @@ var stroke_mesh: ArrayMesh
 var stroke_active := false
 var last_local_point := Vector3(INF, INF, INF)
 var last_mouse_point := Vector2(INF, INF)
+var _last_stamp_ms: int = 0
+const STAMP_INTERVAL_MS: int = 90
 
 
 func setup(editor_plugin: EditorPlugin) -> void:
@@ -68,6 +71,18 @@ func update_hover(camera: Camera3D, mouse_position: Vector2) -> void:
 		hover_valid = true
 
 
+func repeat_held_stamp() -> void:
+	if not stroke_active or not is_instance_valid(target) or not hover_valid:
+		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _last_stamp_ms < STAMP_INTERVAL_MS:
+		return
+	_last_stamp_ms = now
+	_apply(hover_position, true)
+
+
 func forward_input(camera: Camera3D, event: InputEvent) -> int:
 	if not active or not is_instance_valid(target) or not target.mesh is ArrayMesh:
 		return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -82,6 +97,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			stroke_origin = target.mesh
 			stroke_mesh = stroke_origin
 			stroke_active = true
+			_last_stamp_ms = Time.get_ticks_msec()
 			flatten_height = hit.position.y
 			last_local_point = Vector3(INF, INF, INF)
 			last_mouse_point = event.position
@@ -108,8 +124,8 @@ func _hit(camera: Camera3D, position: Vector2) -> Dictionary:
 	return Painter.intersect(target.mesh, target.to_local(ray_origin), target.to_local(ray_end))
 
 
-func _apply(local_position: Vector3) -> void:
-	if last_local_point.x != INF and Vector2(
+func _apply(local_position: Vector3, force: bool = false) -> void:
+	if not force and last_local_point.x != INF and Vector2(
 		last_local_point.x - local_position.x,
 		last_local_point.z - local_position.z
 	).length() < maxf(0.1, radius * 0.12):
@@ -164,6 +180,9 @@ func _finish_stroke() -> void:
 				undo.add_do_property(collision_node, "shape", new_collision)
 				undo.add_undo_property(collision_node, "shape", old_collision)
 		undo.commit_action()
+		var save_error: Error = Storage.persist_terrain(target)
+		if save_error != OK:
+			push_warning("Terrainy: failed to externalize edited mesh (%s)" % error_string(save_error))
 	stroke_origin = null
 	stroke_mesh = null
 	last_local_point = Vector3(INF, INF, INF)

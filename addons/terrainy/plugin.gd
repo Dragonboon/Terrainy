@@ -9,6 +9,7 @@ var inspector_plugin: EditorInspectorPlugin
 var paint_editor: RefCounted
 var viewport_tools: RefCounted
 var _preview_camera: Camera3D
+var _hold_timer: Timer
 
 
 func _enter_tree() -> void:
@@ -21,6 +22,12 @@ func _enter_tree() -> void:
 	paint_editor.setup(self)
 	viewport_tools = TerrainViewportTools.new()
 	viewport_tools.setup(self, paint_editor)
+	_hold_timer = Timer.new()
+	_hold_timer.wait_time = 0.09
+	_hold_timer.one_shot = false
+	_hold_timer.timeout.connect(_repeat_held_stamp)
+	add_child(_hold_timer)
+	_hold_timer.start()
 
 	get_editor_interface().get_selection().selection_changed.connect(_sync_selection)
 	scene_changed.connect(_on_scene_changed)
@@ -33,6 +40,8 @@ func _exit_tree() -> void:
 		selection.selection_changed.disconnect(_sync_selection)
 	if scene_changed.is_connected(_on_scene_changed):
 		scene_changed.disconnect(_on_scene_changed)
+	_hold_timer.stop()
+	_hold_timer.queue_free()
 	viewport_tools.cleanup()
 	viewport_tools = null
 	paint_editor.cleanup()
@@ -122,3 +131,8 @@ func _forward_3d_draw_over_viewport(overlay: Control) -> void:
 		paint_editor.hover_position, paint_editor.radius,
 		paint_editor.sculpt_enabled, paint_editor.sculpt_operation
 	)
+
+
+func _repeat_held_stamp() -> void:
+	if paint_editor != null and paint_editor.active:
+		paint_editor.repeat_held_stamp()

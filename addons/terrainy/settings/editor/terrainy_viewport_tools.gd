@@ -4,6 +4,8 @@ extends RefCounted
 ## The bottom contextual row follows the active tool, without polling.
 
 const Builder = preload("res://addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd")
+const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
+const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 const PRESET_ROOT := "res://addons/terrainy/presets/"
 const PRESETS := ["Soft hills", "Highlands", "Mountains", "Island", "Dunes"]
 const PATHS := ["soft_hills.tres", "highlands.tres", "mountains.tres", "island.tres", "dunes.tres"]
@@ -30,6 +32,8 @@ var brush_picker: EditorResourcePicker
 var brush_presets: OptionButton
 var sculpt_mode: OptionButton
 var sculpt_strength: SpinBox
+var sculpt_brush_presets: OptionButton
+var sculpt_brush_picker: EditorResourcePicker
 var debug_check: CheckBox
 var header: Label
 var physics_resolution: SpinBox
@@ -181,7 +185,7 @@ func _create_context() -> void:
 	brush_picker.base_type = "Texture2D"
 	brush_picker.custom_minimum_size.x = 128
 	brush_picker.edited_resource = painter.brush_texture
-	brush_picker.resource_changed.connect(func(resource: Resource): painter.set_brush_texture(resource as Texture2D))
+	brush_picker.resource_changed.connect(_select_custom_brush)
 	paint_row.add_child(brush_picker)
 	_add_label(paint_row, "Drag to paint · Ctrl+Z")
 	brush_presets = OptionButton.new()
@@ -224,6 +228,18 @@ func _create_context() -> void:
 	_add_label(sculpt_row, "Strength")
 	sculpt_strength = _spin(sculpt_row, 0.01, 12.0, 0.1, 2.0, " m")
 	sculpt_strength.value_changed.connect(func(value: float): painter.sculpt_strength = value)
+	_add_label(sculpt_row, "Brush")
+	sculpt_brush_presets = OptionButton.new()
+	for brush_name in ["Soft circle", "Hard circle", "Hill", "Mountain", "Acrylic", "Custom"]:
+		sculpt_brush_presets.add_item(brush_name)
+	sculpt_brush_presets.item_selected.connect(_select_brush_preset)
+	sculpt_row.add_child(sculpt_brush_presets)
+	sculpt_brush_picker = EditorResourcePicker.new()
+	sculpt_brush_picker.base_type = "Texture2D"
+	sculpt_brush_picker.custom_minimum_size.x = 120
+	sculpt_brush_picker.edited_resource = painter.brush_texture
+	sculpt_brush_picker.resource_changed.connect(_select_custom_brush)
+	sculpt_row.add_child(sculpt_brush_picker)
 	_add_label(sculpt_row, "Collision updates after stroke")
 	context.add_child(sculpt_row)
 	tool_rows.append(sculpt_row)
@@ -263,7 +279,7 @@ func _activate_paint_target() -> void:
 		painter.set_active(false)
 		_status("Generate a mesh before painting.")
 		return
-	if tool == Tool.SCULPT and not mesh.has_meta(&"terrainy_height_resolution"):
+	if tool == Tool.SCULPT and Storage.mesh_resolution(mesh) == 0:
 		painter.set_active(false)
 		_status("Sculpt needs a dock-generated mesh. Regenerate this terrain first.")
 		return
@@ -364,7 +380,7 @@ func _generate() -> void:
 	var result: Dictionary = Builder.build(current_profile)
 	if result.get("error", FAILED) == OK:
 		mesh.mesh = result["mesh"]
-		mesh.set_meta(&"terrainy_height_samples", result["heights"])
+
 		mesh.set_meta(&"terrainy_height_resolution", result["resolution"])
 		mesh.add_to_group(&"terrains", true)
 		generator.terrains[mesh] = current_profile
@@ -372,7 +388,8 @@ func _generate() -> void:
 			_update_collision(mesh, result["heights"], result["resolution"], current_profile)
 		else:
 			_clear_collision(mesh)
-		_status("Generated %d cells/axis. Save scene." % result["resolution"])
+		var storage_error: Error = Storage.persist_terrain(mesh)
+		_status("Generated %d cells/axis. Save scene." % result["resolution"] if storage_error == OK else "Generated, but resource export failed: %s" % error_string(storage_error))
 	else:
 		_status("Generation failed. Check Resource settings.")
 	_busy = false
@@ -420,11 +437,9 @@ func _rebuild_collision() -> void:
 		_clear_collision(mesh)
 		_status("Collision removed.")
 		return
-	if not mesh.has_meta(&"terrainy_height_samples"):
-		_status("Generate using the Terrainy toolbar first.")
-		return
-	var heights: PackedFloat32Array = mesh.get_meta(&"terrainy_height_samples")
-	var resolution: int = mesh.get_meta(&"terrainy_height_resolution")
+	
+	var heights: PackedFloat32Array = Sculpt.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
+	var resolution: int = Storage.mesh_resolution(mesh)
 	_update_collision(mesh, heights, resolution, profile)
 	_status("Collision rebuilt at %d cells/axis." % mini(profile.collision_resolution, resolution))
 
@@ -498,6 +513,10 @@ func _select_brush_preset(index: int) -> void:
 	if texture != null:
 		painter.set_brush_texture(texture)
 		brush_picker.edited_resource = texture
+		if sculpt_brush_picker != null:
+			sculpt_brush_picker.edited_resource = texture
+		if sculpt_brush_presets != null:
+			sculpt_brush_presets.select(index)
 
 
 func _toggle_biome_debug(enabled: bool) -> void:
@@ -510,10 +529,18 @@ func _toggle_biome_debug(enabled: bool) -> void:
 
 
 func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
-	if mesh == null or not mesh.has_meta(&"terrainy_height_samples"):
+	if mesh == null or Storage.mesh_resolution(mesh) == 0:
 		return
 	var profile := _physics_profile()
 	if profile != null and profile.generate_collision:
-		var heights: PackedFloat32Array = mesh.get_meta(&"terrainy_height_samples")
-		_update_collision(mesh, heights, int(mesh.get_meta(&"terrainy_height_resolution")), profile)
+		var heights: PackedFloat32Array = Sculpt.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
+		_update_collision(mesh, heights, Storage.mesh_resolution(mesh), profile)
 	_status("Sculpt complete. Collision updated; save the scene.")
+
+
+func _select_custom_brush(resource: Resource) -> void:
+	painter.set_brush_texture(resource as Texture2D)
+	brush_presets.select(5)
+	sculpt_brush_presets.select(5)
+	brush_picker.edited_resource = resource
+	sculpt_brush_picker.edited_resource = resource
