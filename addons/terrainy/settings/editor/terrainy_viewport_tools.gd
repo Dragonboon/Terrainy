@@ -381,7 +381,7 @@ func _generate() -> void:
 	if result.get("error", FAILED) == OK:
 		mesh.mesh = result["mesh"]
 
-		mesh.set_meta(&"terrainy_height_resolution", result["resolution"])
+
 		mesh.add_to_group(&"terrains", true)
 		generator.terrains[mesh] = current_profile
 		if current_profile.generate_collision:

@@ -18,17 +18,13 @@ static func persist_terrain(mesh_node: MeshInstance3D) -> Error:
 	if directory_error != OK:
 		push_warning("Terrainy: cannot create generated asset directory: %s" % error_string(directory_error))
 		return directory_error
-	var path: String = str(mesh_node.get_meta(&"terrainy_asset_path", ""))
-	if not path.begins_with(GENERATED_DIR + "/") or not path.ends_with(".res"):
-		var current_path := mesh_node.mesh.resource_path
-		if current_path.begins_with(GENERATED_DIR + "/") and current_path.ends_with(".res"):
-			path = current_path
-		else:
-			path = "%s/terrain_%s_%d.res" % [
-				GENERATED_DIR,
-				mesh_node.name.validate_filename(),
-				Time.get_ticks_usec()
-			]
+	# Keep each edited mesh revision separate so a save never overwrites a
+	# resource still referenced by the UndoRedo history.
+	var path: String = "%s/terrain_%s_%d.res" % [
+		GENERATED_DIR,
+		mesh_node.name.validate_filename(),
+		Time.get_ticks_usec()
+	]
 	var generated_mesh := mesh_node.mesh as ArrayMesh
 	var mesh_error := ResourceSaver.save(generated_mesh, path, ResourceSaver.FLAG_COMPRESS)
 	if mesh_error != OK:
