@@ -43,6 +43,7 @@ var _switching_selection := false
 func setup(editor_plugin: EditorPlugin, paint_controller: RefCounted) -> void:
 	plugin = editor_plugin
 	painter = paint_controller
+	painter.sculpt_finished = Callable(self, "refresh_after_sculpt")
 	_create_palette()
 	_create_context()
 	plugin.add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_SIDE_LEFT, palette)

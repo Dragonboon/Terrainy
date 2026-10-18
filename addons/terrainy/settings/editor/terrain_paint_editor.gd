@@ -2,6 +2,7 @@
 extends RefCounted
 ## Brush input controller only. Tool UI belongs to TerrainyViewportTools.
 const Painter = preload("res://addons/terrainy/src/terrain/brush/terrain_vertex_painter.gd")
+const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 
 var plugin: EditorPlugin
 var target: MeshInstance3D
@@ -9,6 +10,11 @@ var active := false
 var radius: float = 12.0
 var strength: float = 0.35
 var layer: int = 0
+var sculpt_enabled := false
+var sculpt_operation := 0
+var sculpt_strength := 2.0
+var sculpt_finished: Callable
+var flatten_height := 0.0
 var brush_texture: Texture2D
 var _brush_image: Image
 var stroke_origin: ArrayMesh
@@ -58,6 +64,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			stroke_origin = target.mesh
 			stroke_mesh = stroke_origin
 			stroke_active = true
+			flatten_height = hit.position.y
 			last_local_point = Vector3(INF, INF, INF)
 			last_mouse_point = event.position
 			_apply(hit.position)
@@ -90,9 +97,11 @@ func _apply(local_position: Vector3) -> void:
 	).length() < maxf(0.1, radius * 0.12):
 		return
 	last_local_point = local_position
-	var next_mesh: ArrayMesh = Painter.paint(
-		stroke_mesh, local_position, radius, strength, layer, _brush_image
-	)
+	var next_mesh: ArrayMesh
+	if sculpt_enabled:
+		next_mesh = Sculpt.sculpt(stroke_mesh, local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
+	else:
+		next_mesh = Painter.paint(stroke_mesh, local_position, radius, strength, layer, _brush_image)
 	if next_mesh != stroke_mesh:
 		stroke_mesh = next_mesh
 		target.mesh = stroke_mesh
@@ -111,10 +120,16 @@ func _finish_stroke() -> void:
 	stroke_active = false
 	if is_instance_valid(target) and stroke_mesh != stroke_origin and stroke_mesh != null:
 		var undo := plugin.get_undo_redo()
-		undo.create_action("Paint Terrainy Layer")
+		undo.create_action("Sculpt Terrainy Height" if sculpt_enabled else "Paint Terrainy Layer")
 		undo.add_do_property(target, "mesh", stroke_mesh)
 		undo.add_undo_property(target, "mesh", stroke_origin)
 		undo.commit_action()
+		if sculpt_enabled:
+			var resolution := int(target.get_meta(&"terrainy_height_resolution", 0))
+			if resolution > 0:
+				target.set_meta(&"terrainy_height_samples", Sculpt.extract_heights(stroke_mesh, resolution))
+				if sculpt_finished.is_valid():
+					sculpt_finished.call(target)
 	stroke_origin = null
 	stroke_mesh = null
 	last_local_point = Vector3(INF, INF, INF)
