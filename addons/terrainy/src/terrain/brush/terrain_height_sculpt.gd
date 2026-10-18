@@ -10,6 +10,7 @@ static func sculpt(mesh: ArrayMesh, center: Vector3, radius: float, strength: fl
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	if vertices.is_empty() or indices.is_empty():
 		return mesh
+	var original_vertices: PackedVector3Array = vertices.duplicate()
 	var changed := false
 	var stride := int(round(sqrt(float(vertices.size()))))
 	for i in range(vertices.size()):
@@ -30,18 +31,24 @@ static func sculpt(mesh: ArrayMesh, center: Vector3, radius: float, strength: fl
 			0: p.y += strength * weight
 			1: p.y -= strength * weight
 			2:
-				var local_mean := p.y
-				var count := 1
+				var local_mean: float = original_vertices[i].y
+				var count: int = 1
 				if stride * stride == vertices.size():
-					var gx := i % stride
-					var gz := int(i / stride)
-					for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
-						var nx := gx + offset.x
-						var nz := gz + offset.y
-						if nx >= 0 and nx < stride and nz >= 0 and nz < stride:
-							local_mean += vertices[nz * stride + nx].y
-							count += 1
-				p.y = lerpf(p.y, local_mean / count, clampf(strength * 0.15 * weight, 0.0, 1.0))
+					var gx: int = i % stride
+					var gz: int = int(i / stride)
+					if gx > 0:
+						local_mean += original_vertices[i - 1].y
+						count += 1
+					if gx < stride - 1:
+						local_mean += original_vertices[i + 1].y
+						count += 1
+					if gz > 0:
+						local_mean += original_vertices[i - stride].y
+						count += 1
+					if gz < stride - 1:
+						local_mean += original_vertices[i + stride].y
+						count += 1
+				p.y = lerpf(p.y, local_mean / float(count), clampf(strength * 0.15 * weight, 0.0, 1.0))
 			3: p.y = lerpf(p.y, flatten_height, clampf(strength * 0.15 * weight, 0.0, 1.0))
 		vertices[i] = p
 		changed = true

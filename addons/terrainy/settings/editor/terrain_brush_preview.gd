@@ -37,7 +37,13 @@ static func draw(
 	_draw_ring(overlay, camera, terrain, vertices, stride, contact, radius * 0.5, Color(color.r, color.g, color.b, 0.47), 1.3)
 	_draw_spokes(overlay, camera, terrain, vertices, stride, contact, radius, Color(color.r, color.g, color.b, 0.2))
 	overlay.draw_circle(center_screen, 3.7, color)
-	var action_name := ["RAISE", "LOWER", "SMOOTH", "FLATTEN"][clampi(operation, 0, 3)] if sculpt_mode else "PAINT"
+	var action_name: String = "PAINT"
+	if sculpt_mode:
+		match operation:
+			0: action_name = "RAISE"
+			1: action_name = "LOWER"
+			2: action_name = "SMOOTH"
+			3: action_name = "FLATTEN"
 	var font := overlay.get_theme_default_font()
 	overlay.draw_string(
 		font,
