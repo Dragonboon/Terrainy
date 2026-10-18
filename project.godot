@@ -21,7 +21,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="Terrainy"
 config/description="Generate simple 3D terrain patches and optionally paint material layers in the Godot editor."
 config/version="1.5.1"
-config/features=PackedStringArray("4.6", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="uid://bu5mpj5mx5ywo"
 
 [editor_plugins]
