@@ -16,6 +16,8 @@ var min_z: float = 0.0
 var step_x: float = 1.0
 var step_z: float = 1.0
 var dirty: bool = false
+var sculpt_changed: bool = false
+var changed_bounds: Rect2i = Rect2i()
 var material: Material
 var surface_name: String = ""
 
@@ -226,6 +228,11 @@ func sculpt(
 	_limit_new_slopes(bounds, original, operation, max_slope_degrees)
 	_update_normals(bounds)
 	dirty = true
+	if sculpt_changed:
+		changed_bounds = changed_bounds.merge(bounds)
+	else:
+		sculpt_changed = true
+		changed_bounds = bounds
 	return true
 
 
@@ -314,6 +321,38 @@ func _update_normals(bounds: Rect2i) -> void:
 			var width_x: float = absf(step_x) * float(2 if x > 0 and x < stride - 1 else 1)
 			var width_z: float = absf(step_z) * float(2 if z > 0 and z < stride - 1 else 1)
 			normals[i] = Vector3((left - right) / width_x, 1.0, (up - down) / width_z).normalized()
+
+## Seam synchronization uses these narrow helpers without replacing UV2/colors.
+func edge_needs_refresh(x: int, z: int) -> bool:
+	if not sculpt_changed:
+		return false
+	return (
+		x >= changed_bounds.position.x - 1
+		and x <= changed_bounds.end.x
+		and z >= changed_bounds.position.y - 1
+		and z <= changed_bounds.end.y
+	)
+
+
+func set_edge_height(index: int, value: float) -> void:
+	if is_equal_approx(vertices[index].y, value):
+		return
+	var point: Vector3 = vertices[index]
+	point.y = value
+	vertices[index] = point
+	dirty = true
+
+
+func refresh_edge_normal(x: int, z: int) -> void:
+	_update_normals(Rect2i(x, z, 1, 1))
+	dirty = true
+
+
+func set_edge_normal(index: int, value: Vector3) -> void:
+	if normals[index].distance_squared_to(value) < 0.0000000001:
+		return
+	normals[index] = value
+	dirty = true
 
 
 func flush_mesh() -> ArrayMesh:
