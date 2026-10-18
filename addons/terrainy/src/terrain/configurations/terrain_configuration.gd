@@ -25,6 +25,8 @@ class_name TerrainConfiguration extends Resource
 		if value != max_terrain_height:
 			max_terrain_height = maxf(0.5, value)
 @export var generate_collision: bool = true
+## Physics is generated at a reduced resolution from the SAME sampled height grid.
+@export_range(4, 128, 1) var collision_resolution: int = 32
 ## The terrain material that will be applied on the surface
 @export var terrain_material: Material
 #@export_group("LODs") ## TODO - Pending until godot provide a solution for LODs on ArrayMesh created from SurfaceTool

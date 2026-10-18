@@ -1,0 +1,98 @@
+[gd_scene format=3 uid="uid://dcpc5cejt5vo0"]
+
+[ext_resource type="Script" uid="uid://bxpmph408yg10" path="res://addons/terrainy/src/terrain/terrainy.gd" id="1_terrainy"]
+[ext_resource type="Script" uid="uid://c0vor4uojodby" path="res://addons/terrainy/src/terrain/configurations/terrain_noise_configuration.gd" id="2_bmlen"]
+[ext_resource type="Shader" uid="uid://g5c0usg0elut" path="res://addons/terrainy/shaders/terrain/editor_four_layers.gdshader" id="3_kskm5"]
+[ext_resource type="Texture2D" uid="uid://d0kf1ewwsejet" path="res://addons/terrainy/shaders/Dirt_07-256x256.png" id="4_du1q6"]
+[ext_resource type="Texture2D" uid="uid://dk53a0pyc1o4q" path="res://addons/terrainy/shaders/Dirt_10-256x256.png" id="5_2gjnc"]
+[ext_resource type="Texture2D" uid="uid://b52rpkhdlyy1y" path="res://addons/terrainy/shaders/Dirt_13-256x256.png" id="6_jsxv4"]
+[ext_resource type="Texture2D" uid="uid://cvcw6ctvchloy" path="res://addons/terrainy/shaders/Dirt_20-256x256.png" id="7_xetyh"]
+[ext_resource type="Texture2D" uid="uid://cpmy2clquqei4" path="res://addons/terrainy/assets/noise_textures/Perlin/Perlin_01-256x256.png" id="8_tvixd"]
+[ext_resource type="ArrayMesh" uid="uid://c3emkkxvv2p6d" path="res://terrainy_generated/terrain_EditableTerrain_81672083.res" id="9_jsxv4"]
+[ext_resource type="Shape3D" uid="uid://cv1ugfhhwuqw5" path="res://terrainy_generated/terrain_EditableTerrain_81672083_collision.res" id="10_xetyh"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_cwd4g"]
+seed = 7897
+frequency = 0.024
+fractal_octaves = 2
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_cmq1c"]
+seed = 7826
+frequency = 0.008
+fractal_octaves = 3
+fractal_gain = 0.38
+domain_warp_enabled = true
+domain_warp_amplitude = 8.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1021y"]
+render_priority = 0
+shader = ExtResource("3_kskm5")
+shader_parameter/base_texture = ExtResource("4_du1q6")
+shader_parameter/grass_texture = ExtResource("5_2gjnc")
+shader_parameter/rock_texture = ExtResource("6_jsxv4")
+shader_parameter/soil_texture = ExtResource("7_xetyh")
+shader_parameter/variation_texture = ExtResource("8_tvixd")
+shader_parameter/base_color = Color(0.78, 0.72, 0.55, 1)
+shader_parameter/grass_color = Color(0.27, 0.51, 0.22, 1)
+shader_parameter/rock_color = Color(0.48, 0.49, 0.47, 1)
+shader_parameter/soil_color = Color(0.44, 0.31, 0.21, 1)
+shader_parameter/height_min = 0.0
+shader_parameter/height_max = 68.0
+shader_parameter/grass_start = 0.04
+shader_parameter/rock_start = 0.36
+shader_parameter/rock_slope = 0.35
+shader_parameter/transition_width = 0.12
+shader_parameter/triplanar_scale = 0.045
+shader_parameter/variation_scale = 0.007
+shader_parameter/variation_strength = 0.28
+shader_parameter/manual_blend = 1.0
+shader_parameter/debug_biomes = false
+
+[sub_resource type="Resource" id="Resource_gmrjr"]
+resource_local_to_scene = true
+script = ExtResource("2_bmlen")
+noise = SubResource("FastNoiseLite_cmq1c")
+organic_generation = true
+detail_noise = SubResource("FastNoiseLite_cwd4g")
+detail_strength = 0.018
+smoothing_passes = 3
+max_slope_degrees = 42.0
+id = &"mountains"
+name = &"mountains"
+max_terrain_height = 68.0
+collision_resolution = 48
+terrain_material = SubResource("ShaderMaterial_1021y")
+
+[sub_resource type="Environment" id="Environment_day"]
+background_mode = 1
+background_color = Color(0.64, 0.73, 0.82, 1)
+
+[node name="TerrainEditorExample" type="Node3D" unique_id=812593347]
+
+[node name="Terrainy" type="Node" parent="." unique_id=1797608733 node_paths=PackedStringArray("terrains")]
+script = ExtResource("1_terrainy")
+terrains = {
+NodePath("EditableTerrain"): SubResource("Resource_gmrjr"),
+null: SubResource("Resource_gmrjr")
+}
+
+[node name="EditableTerrain" type="MeshInstance3D" parent="Terrainy" unique_id=719138480 groups=["terrains"]]
+mesh = ExtResource("9_jsxv4")
+metadata/terrainy_height_resolution = 64
+metadata/terrainy_asset_path = "res://terrainy_generated/terrain_EditableTerrain_81672083.res"
+
+[node name="TerrainyCollider" type="StaticBody3D" parent="Terrainy/EditableTerrain" unique_id=907399516]
+
+[node name="Shape" type="CollisionShape3D" parent="Terrainy/EditableTerrain/TerrainyCollider" unique_id=1936664187]
+shape = ExtResource("10_xetyh")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=425796856]
+transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
+light_energy = 1.15
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1509696137]
+environment = SubResource("Environment_day")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1463970787]
+transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 150, 250)
+current = true

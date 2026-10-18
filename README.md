@@ -1,382 +1,168 @@
 <div align="center">
-	<img src="icon.svg" alt="Logo" width="160" height="160">
-
-<h3 align="center">Terrainy</h3>
-
-  <p align="center">
-   Quickly create natural-looking terrain with customizable noise parameters. This tool is designed to create simple terrains that do not require manual painting
-	<br />
-	·
-	<a href="https://github.com/sempitern0/terrainy/issues/new?assignees=sempitern0&labels=%F0%9F%90%9B+bug&projects=&template=bug_report.md&title=">Report Bug</a>
-	·
-	<a href="https://github.com/sempitern0/terrainy/issues/new?assignees=sempitern0&labels=%E2%AD%90+feature&projects=&template=feature_request.md&title=">Request Features</a>
+  <img src="icon.svg" width="112" height="112" alt="Terrainy logo" />
+  <h1>Terrainy</h1>
+  <p><strong>Organic 3D terrain generation and in-editor sculpting for Godot.</strong></p>
+  <p>Generate natural landscapes from reusable Resources, refine them directly in the 3D viewport, and save lightweight editable terrain patches.</p>
+  <p>
+    <a href="LICENSE">MIT License</a> ·
+    <a href="https://github.com/Dragonboon/Terrainy/issues">Issues</a> ·
+    <a href="docs/EDITOR_PAINTING.md">Editor tools</a> ·
+    <a href="docs/PROCEDURAL_GRID.md">Procedural grids</a> ·
+    <a href="docs/VALIDATION.md">Validation</a>
   </p>
 </div>
 
-<br>
-<br>
+## Overview
 
-- [📦 Installation](#-installation)
-	- [||`main`|`1.x`|](#main1x)
-- [Getting started 📝](#getting-started-)
-	- [Editor](#editor)
-	- [Runtime](#runtime)
-- [Parameters](#parameters)
-- [TerrainConfiguration](#terrainconfiguration)
-	- [Common configuration parameters](#common-configuration-parameters)
-		- [ID](#id)
-		- [Name](#name)
-		- [Description](#description)
-		- [World offset](#world-offset)
-		- [Mesh resolution](#mesh-resolution)
-		- [Size depth](#size-depth)
-		- [Size width](#size-width)
-		- [Max terrain height](#max-terrain-height)
-		- [Generate collisions](#generate-collisions)
-		- [Terrain material](#terrain-material)
-		- [Elevation curve](#elevation-curve)
-			- [*Use elevation curve*](#use-elevation-curve)
-			- [*Allow negative elevation values*](#allow-negative-elevation-values)
-		- [Fallof texture](#fallof-texture)
-			- [*Use fall off*](#use-fall-off)
-		- [Radial shape](#radial-shape)
-			- [*Radial fall off power*](#radial-fall-off-power)
-		- [Mirror terrain](#mirror-terrain)
-			- [*Generate mirror*](#generate-mirror)
-			- [*Generate mirror collision*](#generate-mirror-collision)
-			- [*Mirror offset*](#mirror-offset)
-			- [*Mirror depth*](#mirror-depth)
-			- [*Mirror noise*](#mirror-noise)
-			- [*Mirror material*](#mirror-material)
-	- [TerrainNoiseConfiguration](#terrainnoiseconfiguration)
-		- [Randomize noise seed](#randomize-noise-seed)
-		- [Noise](#noise)
-	- [TerrainNoiseTextureConfiguration](#terrainnoisetextureconfiguration)
-		- [Noise Texture](#noise-texture)
-	- [TerrainHeightmapConfiguration](#terrainheightmapconfiguration)
-		- [Heightmap image](#heightmap-image)
-		- [Auto scale](#auto-scale)
-		- [Example](#example)
-- [Generation examples](#generation-examples)
-	- [Mirror terrain](#mirror-terrain-1)
-	- [Fall off textures](#fall-off-textures)
-		- [Abstract curve](#abstract-curve)
-		- [Black holes](#black-holes)
-		- [Center line](#center-line)
-		- [Center soft](#center-soft)
-		- [Circle irregular](#circle-irregular)
-		- [Smooth borders *(Island edges)*](#smooth-borders-island-edges)
-		- [Center line vertical](#center-line-vertical)
-		- [Circle](#circle)
-		- [Circle flat](#circle-flat)
-		- [Vertical](#vertical)
-		- [Inverted circle](#inverted-circle)
-		- [Square flow *(similar results like inverted circle)*](#square-flow-similar-results-like-inverted-circle)
-- [Terrain shaders](#terrain-shaders)
-	- [Triplanar terrain](#triplanar-terrain)
-	- [Triplanar gradient terrain](#triplanar-gradient-terrain)
-	- [Water](#water)
-- [Procedural terrain *(Work in progress)*](#procedural-terrain-work-in-progress)
-- [Runtime Brush *(Work in progress)*](#runtime-brush-work-in-progress)
+Terrainy is a small, editor-first plugin for **Godot 4.7**. It focuses on generating natural terrain for modest 3D projects without adopting the complexity of Terrain3D, Terrabrush or an open-world streaming framework. Its standard workflow needs **no runtime lab, autoload or third-party dependency**.
 
-# 📦 Installation
+**Highlights**
 
-1. [Download Latest Release](https://github.com/sempitern0/terrainy/releases/latest)
-2. Unpack the `addons/terrainy` folder into your `/addons` folder within the Godot project
-3. Enable this addon within the Godot settings: `Project > Project Settings > Plugins`
+- **Reusable generation profiles:** Soft Hills, Highlands, Mountains, Island and Dunes, with deterministic noise, optional secondary detail, smoothing and slope limits.
+- **Six viewport modes:** Cursor, Generate, Paint, Collision, Sculpt and Grid. The compact toolbar sits in the 3D editor; options appear in a contextual row below it.
+- **Organic Sculpt:** Raise, Lower, Smooth and Flatten with brush presets, custom Texture2D stamps, terrain-following brush preview and per-stroke Undo/Redo.
+- **Material painting:** four customizable Texture2D material slots and optional dual-material organic strokes blended with automatic height/slope biomes; triplanar texture projection and low-frequency variation reduce repetitive tiling.
+- **Efficient static collision:** separate lower-resolution terrain collider, regenerated when geometry changes rather than on every paint movement.
+- **Volcanic underwater foundations:** optional, low-noise seabed geometry under island coasts, without duplicating the full terrain mesh; optional static collision.
+- **Procedural tile grids:** preview, apply or cancel finite deterministic layouts (Continuous, Archipelago, Valley, Ridgeline), with up to 16 editable tiles and shared sampled boundaries.
+- **Seam-aware editing:** compatible Grid siblings share edge heights and normals during Sculpt, with one Undo/Redo action for the affected tiles.
+- **Editable scene assets:** generated meshes and colliders are stored as compressed external `.res` Resources under `res://terrainy_generated/`.
 
-To better understand what branch to choose from for which Godot version, please refer to this table:
-|Godot Version|terrainy Branch|terrainy Version|
-|---|---|--|
-|[![GodotEngine](https://img.shields.io/badge/Godot_4.5.x_stable-blue?logo=godotengine&logoColor=white)](https://godotengine.org/)|`main`|`1.x`|
----
+## Requirements
 
-# Getting started 📝
-Creating a new terrain is as easy as adding the `Terrainy` node to your scene and configuring its parameters. The basic workflow involves assigning a `TerrainConfiguration` that will shape a `MeshInstance3D` into a Terrain by generating a new `ArrayMesh` for it. You have the flexibility to assign multiple mesh instances to the Terrainy node to generate all terrains simultaneously, either within the editor or at runtime.
+| Component | Requirement |
+| --- | --- |
+| Engine | **Godot 4.7** project target |
+| Editor | Godot 3D editor with the Terrainy plugin enabled |
+| Runtime dependency | None required for editor terrain creation |
+| Optional legacy APIs | Runtime terrain generation, experimental streaming and runtime brush are retained separately |
+| License | MIT; see [LICENSE](LICENSE) |
 
-## Editor
-To generate all currently configured terrains, simply select the `Terrainy` node in the Scene tree and press the `Generate Terrains` button found in the Inspector or the node's toolbar. The process will execute immediately.
+The repository's recorded headless import/regression result was obtained with **Godot 4.6 stable**. That result is not a substitute for testing the viewport integration in the target 4.7 editor. See [Validation](docs/VALIDATION.md).
 
+## Installation
 
-## Runtime
-Terrains can also be generated dynamically at runtime using the Terrainy node's dedicated generation function. This is an async process so to confirm and run code after it finish you need to awair or connect a callback to the signal `terrain_generation_finished`
+1. Copy the **entire** [`addons/terrainy/`](addons/terrainy) directory to `res://addons/terrainy/` in your Godot project.
+2. Go to **Project → Project Settings → Plugins** and enable **Terrainy**.
+3. Add a `Terrainy` node to a 3D scene and select it to show the tools in the 3D viewport.
 
+The five bundled profiles, shader materials and brush masks live inside the addon and are available immediately after installation.
 
-```swift
-signal terrain_generation_finished(terrains: Dictionary[MeshInstance3D, TerrainConfiguration])
+> **Using the repository as a demo project?** Open [`examples/terrain_lab/terrain_lab.tscn`](examples/terrain_lab/terrain_lab.tscn) and select its `Terrainy` node. The example does not auto-generate terrain or require Play/F6.
 
-// Don't use procedural just yet even though it works, performance is not yet optimal
-func generate_terrains(
-	selected_terrains: Dictionary[MeshInstance3D, TerrainConfiguration] = {},
- 	spawn_node: Node3D = procedural_terrain_spawn_node, 
-	procedural: bool = false) -> void
+## Quick start: generate and edit a terrain
+
+1. In **Generate New**, choose **Soft Hills** (or another preset), click **+ Mesh** once and then **Generate New**.
+2. Inspect the terrain in the 3D viewport. Use **Edit Profile** to change the underlying Resource, then generate again when ready.
+3. Select the generated `MeshInstance3D`, switch to **Sculpt**, and use Raise/Lower/Smooth/Flatten. Choose a supplied brush stamp or assign any `Texture2D`.
+4. Switch to **Paint**, select a material and paint immediately. The adjacent Texture2D field edits only that material; optional **Mix two materials** reveals secondary/proportion/variation settings over the automatic biome.
+5. Open **Collision** to enable physics, choose a collision resolution and explicitly rebuild if needed.
+6. **Save the scene**, including the referenced `terrainy_generated/` resources.
+
+Each brush stroke can be undone and redone. Collision is rebuilt after an affected Sculpt stroke, not after painting material colors.
+
+**Important:** Regenerating a terrain replaces its manual Sculpt and Paint modifications. Save a duplicate scene or generated mesh first when experimenting with new seeds and geometry. Independent, non-destructive paint storage is not implemented yet.
+
+For an island, **Generate → Seabed** enables a smooth submerged foundation. Adjust its depth, spread and roughness in **Edit Profile**; the bundled Island profile has sensible defaults. See [Underwater foundations](docs/UNDERWATER_FOUNDATION.md).
+
+## Quick start: procedural layouts
+
+1. Select the `Terrainy` node and a **noise-based profile** in **Generate**.
+2. Switch to **Grid** and configure 1–4 columns, 1–4 rows, a seed and one of the four layouts.
+3. Click **Preview** for low-resolution transient meshes without physics.
+4. Click **Apply Grid** to create `TerrainyGrid/Tile_XX_YY` meshes and optional static colliders. The bottom status row reports progress. **Cancel** stops pending tiles without deleting completed ones.
+5. Select a tile and Sculpt across its edge to shape compatible neighboring tiles in the same grid.
+
+The tile generator samples one shared heightfield, then applies smoothing and slope limits **before splitting it**. This preserves the initially shared edge heights and normals. It will not overwrite an existing `TerrainyGrid`; rename/remove an old grid explicitly before another Apply.
+
+**Grid limits:** 16 tiles maximum and 384 samples per complete grid axis. Only noise-based `TerrainNoiseConfiguration` resources are supported by this editor grid workflow.
+
+Read [Procedural Grid](docs/PROCEDURAL_GRID.md) for determinism, collision/seam limits and cancellation details.
+
+## Tools at a glance
+
+| Tool | Purpose |
+| --- | --- |
+| Cursor | Regular viewport selection, with brush input disabled |
+| Generate | Pick or edit a Resource and build one terrain |
+| Paint | Adjust four material weights with stamp/radius/strength controls |
+| Collision | Enable static collisions and tune independent physics resolution |
+| Sculpt | Raise, Lower, Smooth or Flatten geometry using organic brush falloff |
+| Grid | Preview/apply deterministic finite multi-mesh layouts |
+
+**Surface materials:** the bundled editor shader selects and blends layers using world height and slope. Use **Biome debug** to visualize the layer distribution with clearly differentiated colors. Material samplers can be replaced with project textures.
+
+See [Painting and Sculpting](docs/EDITOR_PAINTING.md) for brush controls, materials, Undo/Redo and storage semantics.
+
+## Terrain configuration resources
+
+| Resource | Generation source | Editor workflow |
+| --- | --- | --- |
+| `TerrainNoiseConfiguration` | `FastNoiseLite`, organic settings and optional falloff | Single terrain + Grid |
+| `TerrainNoiseTextureConfiguration` | `NoiseTexture2D` or other `Texture2D` | Single terrain |
+| `TerrainHeightmapConfiguration` | Grayscale heightmap `Texture2D` | Single terrain |
+
+Shared controls include width/depth, maximum height, mesh resolution, world-space noise offset, elevation curve, falloff, material and collision resolution. Noise profiles additionally expose smoothing, secondary detail, and physical slope ceilings.
+
+Bundled optional assets include heightmaps, falloff masks, brush images, prototype textures, gradients and water shaders. They are not prerequisites for using the core terrain generator.
+
+## Architecture
+
+```text
+addons/terrainy/
+  plugin.gd                         Godot editor extension
+  presets/                          Reusable TerrainNoiseConfiguration Resources
+  settings/editor/
+    terrainy_viewport_tools.gd       Tool palette and contextual controls
+    terrain_paint_editor.gd         Brush input, strokes and Undo/Redo
+    terrainy_procedural_tools.gd    Grid preview/apply/cancel and progress
+    terrain_storage.gd             External binary Resource persistence
+  src/terrain/
+    configurations/                Terrain Resource contracts
+    terrains/
+      organic_terrain_builder.gd    Single heightfield and collider
+      terrain_grid_generator.gd     Shared heightfield, deterministic tiles
+    brush/
+      terrain_edit_session.gd       Bounded brush data updates
+      terrain_grid_sculpt_session.gd  Shared-border Sculpt coordination
+  shaders/terrain/                  Automatic and optional terrain shaders
 ```
 
-# Parameters
-The image below illustrates the parameters you can configure for terrain generation:
+**Design boundary:** editor-side Terrainy controls own input, scene updates and Undo/Redo; generation builds bounded heightfields; paint/sculpt sessions manage editable vertex buffers; storage externalizes assets. The retained legacy runtime APIs are separate and experimental where documented, **not dependencies of the editor workflow**.
 
-- - -
-![terrainy_parameters](images/terrainy_parameters.png)
-- - -
+See [Architecture](docs/ARCHITECTURE.md) for ownership, persistence, performance and migration details.
 
-# TerrainConfiguration
-This is the basic resource which provides the parameters that you can alter to generate the desired terrain.
+## Development & validation
 
-> [!IMPORTANT]
-> This resource is not used directly, but rather those that extend from it. 
+The repository contains a Python standard-library runner and three focused headless GDScript regression suites:
 
-## Common configuration parameters
+```sh
+python3 tools/run_checks.py --godot godot
+```
 
-### ID
+The gate imports the project and checks deterministic generation, seam continuity, brush behavior, ray picking, persisted resources and collision relationships. The suite does **not** substitute for interactive testing of viewport layout, texture rendering or FPS. See [Validation](docs/VALIDATION.md).
 
-A unique identifier used to access this specific Terrain resource externally (e.g., via code or configuration files).
-### Name
-A descriptive and readable name for this terrain, primarily for identification within the editor or UI.
+Before merging editor changes, also test: viewport tool visibility, mouse input, custom masks, Undo/Redo, Sculpt across tile corners, collision updates, and save/reopen in **Godot 4.7**.
 
-### Description
-An extended text field to provide additional context and detailed specifications about the characteristics or usage of this terrain resource.
+## Documentation
 
-### World offset
-An optional offset applied to the terrain's local position. This value shifts the terrain's origin relative to the parent node's transform *(i.e., its local coordinate system)* when it is spawned or instantiated in the scene.
+- [Documentation index](docs/README.md) — choose the right guide.
+- [Editor painting and sculpting](docs/EDITOR_PAINTING.md) — strokes, brushes, materials and persistence.
+- [Procedural grid](docs/PROCEDURAL_GRID.md) — layouts, bounds, seams and safe Apply.
+- [Architecture](docs/ARCHITECTURE.md) — module boundaries and legacy compatibility.
+- [Validation](docs/VALIDATION.md) — headless checks, recorded evidence and manual gates.
+- [Terrain3D performance review](docs/TERRAIN3D_PAINTING_REVIEW.md) — transferable performance patterns.
 
-### Mesh resolution
-More resolution means more detail _(more dense vertex)_ in the terrain generation, this increases the mesh subdivisions and could reduce the performance in low-spec pcs.
+## Contributing
 
-### Size depth
-The depth size of the mesh (z) in godot units (meters)
+Terrainy is maintained as a focused, dependency-light editor addon. Bug reports and pull requests are welcome when they preserve a straightforward Godot workflow. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
-### Size width
-The width size of the mesh (x) in godot units (meters)
+Developed by [sempitern0](https://github.com/sempitern0) within [Dragonboon](https://github.com/Dragonboon). Licensed under the [MIT License](LICENSE).
 
-### Max terrain height
-The maximum height (y) at which this terrain can be generated in godot units (meters). The noises values are in a range of _(0, 1)_. So if the noise value in a specific vertex point it's `0.5` the height returned for a `max_terrain_height` of 50 the result will be `50 * 0.5 = 25`
+### Explore generated variants
 
-### Generate collisions
-Include the collision shape when the terrain is generated
-
-### Terrain material
-The basic material you want to apply when the terrain is generated. By default assign a green prototype textured material 
-
-### Elevation curve
-This curve can adjust what the maximum height on the ground will be according to the graph from left to right in the generated noise image. This allows you to create flat mountains or holes in the generated terrain
-
-#### *Use elevation curve*
-Enable or disable the elevation curve for this terrain, when no curve is assigned is disabled by default
-
-#### *Allow negative elevation values*
-To generate a more noticed mountain shapes that go through negative values instead of stopping on 0.
-
-### Fallof texture
-Use an image to smooth the edges on the terrain. This addon provide a few images to get some extra shapes in the generated terrains by being able to create islands, cliffs and so on, can be found on `res://addons/terrainy/assets/falloff_images`.
-
-#### *Use fall off*
-Enable or disable the fall off for this terrain, when no fall off texture is assigned is disabled by default
-
-### Radial shape
-Generate the terrain in a radial pattern, useful for creating volcanoes, islands, etc.
-
-#### *Radial fall off power*
-The strength of the radial shape applied to the terrain
-
-### Mirror terrain
-Generates a volumetric mirror terrain situated directly beneath the main terrain. This secondary terrain is designed to enhance the sense of solidity and depth for the terrain mass, effectively replacing the visual perception of a thin, molded surface.
-
-#### *Generate mirror*
-Enable or disable to include the mirror generation when the terrain is generated.
-
-#### *Generate mirror collision*
-Generate the collision shape for this new terrain.
-
-#### *Mirror offset*
-The separation between the main terrain and the mirror, this value is not recommended to update but is exposed in case you need it
-
-#### *Mirror depth*
-The height of the mirror to the bottom
-
-#### *Mirror noise*
-An optional `FastNoiseLite` in case you want more control in the output generation of this mirror terrain. Gives better results in terms of smooth visuals.
-#### *Mirror material*
-An optional material de apply on this mirror terrain. By default assign a brown prototype textured material 
-
-- - -
-## TerrainNoiseConfiguration
-A configuration where you can provide a `FastNoiseLite` to shape the terrain.
-
-### Randomize noise seed
-When enabled, in each generation the seed of the selected noise will be randomized. Disable it to do it manually and keep the same seed for the generated land and not lose the structure.
-
-### Noise
-This is a [FastNoiseLite](https://docs.godotengine.org/en/stable/classes/class_fastnoiselite.html#fastnoiselite) instance. Noise values are perfect to generate a variety of surfaces, higher frequencies tend to generate more mountainous terrain.
-
-
-## TerrainNoiseTextureConfiguration
-A configuration where you can provide a noise in texture format to shape the terrain
-
-### Noise Texture
-An image that represents a noise, this addon provides few ones to test more complex shapes that maybe could not be achieved with a `FastNoiseLite` on path `res://addons/terrainy/assets/noise_textures`.
-
-You can find a lot more for free on [ScreamingBrainStudios](https://screamingbrainstudios.itch.io/noise-texture-pack)
-
-
-## TerrainHeightmapConfiguration
-A configuration where you can provide an Heightmap image to shape the terrain. You can generate heightmap images using [This free generator for Unreal engine](https://manticorp.github.io/unrealheightmap/index.html#latitude/27.48025310172045/longitude/85.42179107666016/zoom/15/outputzoom/13/width/505/height/505) but the output can be use inside Godot as well.
-
-### Heightmap image
-A valid heightmap image on black white pattern that represents a shaped terrain. 
-
-### Auto scale
-Auto scale the correct height from the heightmap for a more accurate result.
-
-### Example
-Below you have a generated heightmap with the tool linked before
-
-<img src="images/27_246_84_838_15_1009_1009.png" alt="heightmap_example" width="500" height="500">
-
-- - -
-
-
-![terrain_heightmap_](images/terrain_heightmap.png)
-
-
-- - -
-
-# Generation examples
-
-## Mirror terrain
-![terrain_simple](images/terrain_no_mirror.png)
-
-
-**With `generate_mirror` enabled on configuration**
-
-![terrain_simple](images/terrain_with_mirror.png)
-
-
-## Fall off textures
-The following terrain images were captured generating a terrain using `TerrainNoiseConfiguration` with Perlin noise with a frequency of `0.005` and the following elevation curve:
-
-
-![elevation_curve](images/elevation_curve.png)
-
-- - -
-
-### Abstract curve
-
-![abstract_curve_fall_off](images/terrain_abstract_fall_off.png)
-
-- - -
-
-### Black holes
-
-![black_hole_fall_off](images/terrain_black_hole_fall_off.png)
-
-- - -
-
-### Center line
-
-![center_line_fall_off](images/terrain_center_line_fall_off.png)
-
-
-- - -
-
-### Center soft
-
-![center_soft_fall_off](images/terrain_center_soft_fall_off.png)
-
-- - -
-
-### Circle irregular
-
-![center_soft_fall_off](images/terrain_circle_irregular_fall_off.png)
-
-- - -
-
-### Smooth borders *(Island edges)*
-
-![fall_off_side](images/terrain_fall_off_side.png)
-
-- - -
-
-### Center line vertical
-
-![center_line_vertical_fall_off](images/terrain_center_line_vertical_fall_off.png)
-
-- - -
-
-### Circle
-
-![circle_fall_off](images/terrain_circle_fall_off.png)
-
-- - -
-
-### Circle flat
-
-![circle_flat_fall_off](images/terrain_flat_circle_fall_off.png)
-
-- - -
-
-### Vertical
-
-![vertical_fall_off](images/terrain_vertical_fall_off.png)
-
-- - -
-
-### Inverted circle
-
-![inverted_circle_fall_off](images/terrain_inverted_circle_fall_off.png)
-
-- - -
-
-### Square flow *(similar results like inverted circle)*
-
-![square_flow_fall_off](images/terrain_square_flow_fall_off.png)
-
-
-# Terrain shaders
-This addon provides multiple shaders to achieve terrain texturing based on **world height** and **triplanar mapping**, designed to avoid visible UV seams and texture stretching. 
-
-All shaders are located at: `res://addons/terrainy/shaders/terrain`
-
-1. Create a new `ShaderMaterial`
-2. Assign the desired shader
-3. Apply the material to the `MeshInstance3D` that contains your terrain mesh
-
-## Triplanar terrain
-The shader `triplanar_terrain.gdshader` projects textures in **three axes (X/Y/Z)** and blends them based on surface normals. It eliminates visible seams and UV stretching.
-
-A small set of test terrain textures is included at: `res://addons/terrainy/shaders/terrain`
-
-
-![triplanar_terrain](images/triplanar_terrain.png)
-
-- - -
-
-## Triplanar gradient terrain
-This shader `triplanar_gradient_terrain.gdshader`  variant replaces texture-based blending with **smooth gradient transitions** that uses `GradientTexture2D`, useful for stylized terrain or color-based materials for low-poly environments. This shader ensures visually clean gradients even on high resolution meshes.
-
-Several pre-made gradients can be found at: `res://addons/terrainy/shaders/terrain/gradients`
-
-
-![triplanar_gradient_terrain](images/terrain_gradient.png)
-
-
-## Water
-A modified version of the original water shader from [LesusX](https://github.com/LesusX/YouTube/blob/main/WaterShader/water.gdshader). 
-
-A ready-to-use material is included at: `res://addons/terrainy/shaders/terrain/water/ocean_water.tres` 
-
-1. Create a new `MeshInstance3D`
-2. Assign a `PlaneMesh` or `QuadMesh`
-3. Apply the provided water material
-4. Set the mesh size, it's recommended to have at least subdivisions from 100 for better detail.
-
-![water_parameters](images/water_parameters.png)
-
-- - -
-
-![water](images/water.png)
-
-
-
-# Procedural terrain *(Work in progress)*
-
-# Runtime Brush *(Work in progress)*
+**Generate New** automatically creates a new seed and modest configuration
+variations when **Vary** is checked. The seed appears in the editor status,
+and the resulting configuration is saved per mesh. Turning **Vary** off repeats
+the last effective profile. Generate New deliberately replaces the currently selected terrain, including its manually painted/sculpted geometry. Use + Mesh explicitly to preserve an alternative.
+The Island preset forms an irregular coastal outline. The experimental underwater foundation is off by default, with restrained depth and spread when enabled.

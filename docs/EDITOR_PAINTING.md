@@ -1,0 +1,181 @@
+# Terrainy — integrated Godot 3D editor workflow
+
+The tool palette is anchored to the lower left of the 3D editor. Its larger
+icons select Cursor, Generate, Paint, Collision and Sculpt. The lower context
+area uses wrapping containers, so narrow viewports show multiple compact lines
+rather than hiding controls behind a horizontal scrollbar.
+
+## Generate and biome materials
+Create a terrain mesh, select one of the five presets, then click Generate.
+Each mesh receives a separate ShaderMaterial instance with **height_min** and
+**height_max** derived from its actual generated vertex heights. This is
+important: the same world-relative height limits cannot describe the visible
+height variation of every fixed-seed biome.
+
+The shader combines height bands, slope and soft transitions. Its Base, Grass,
+Rock and Soil textures default to existing Terrainy Dirt assets, but every
+sampler accepts user-supplied textures. The palette tints are deliberately
+stronger because the bundled dirt-family source textures are similar. The
+ShaderMaterial **debug_biomes** parameter and the **Biome debug** checkbox
+show high-contrast colors for diagnosing the height/slope masks.
+
+To apply these changes to terrain built earlier, regenerate it. Regeneration
+still resets manually painted vertex colors.
+
+## Paint
+Select the generated mesh, activate Paint, choose a material layer, brush
+radius and strength. A **Brush presets** dropdown loads existing Terrainy
+stamp textures: Soft circle, Hard circle, Hill, Mountain and Acrylic.
+The adjacent Texture2D picker remains available for any imported stamp image.
+The overlay now projects the brush onto the actual triangulated heightfield: a
+world-scale perimeter, half-radius falloff ring, spokes and operation label.
+It hides when the cursor does not intersect the selected terrain and does not
+require collision raycasts. The outline follows the actual edited surface, not
+a flat screen-space circle.
+Stroke edits are Undo/Redo actions.
+
+## Surface textures versus brush masks
+
+These are separate inputs:
+
+- **Surface textures** define what the four terrain material channels look
+  like. In **Paint → Material → Texture**, assign any project-imported
+  `Texture2D` to the currently selected Base, Grass, Rock or Soil slot. Bundled Dirt textures are the
+  default examples. You can change them without regenerating the heightfield.
+- **Brush presets / Brush Texture2D** affect only the *shape and opacity*
+  of the painting footprint, not the material being painted.
+
+Assigning a surface texture creates a separate ShaderMaterial and ArrayMesh
+for that terrain; shared profile materials and other grids are not modified.
+The change is registered in Undo/Redo and saved to its external mesh resource.
+For custom shaders, use a material that implements the Terrainy four-layer
+shader uniforms; arbitrary shader parameter layouts are not supported.
+
+### Dual-material organic brush
+
+The Paint bar defaults to **one material**. Choose Base, Grass, Rock or Soil
+from a compact **text-only dropdown**. A separate fixed-size 28px thumbnail
+shows the selected texture without changing the dropdown or dock height.
+The adjacent Texture2D picker edits **only the selected material**, not all
+four slots. Clearing it restores the bundled example texture.
+
+Enable **Mix two materials** to reveal a separate optional row. Pick the
+second material (it cannot equal the primary), then adjust **Proportion**
+and **Organic variation**. Turning Mix off immediately restores single-layer
+painting without changing existing painted areas.
+The paint stroke writes both RGBA material weights in the same vertex pass,
+with one Undo/Redo action and no extra mesh upload.
+
+For example: primary Grass + secondary Rock at Mix 0.30 and Variation 0.45
+creates stone patches in grassy terrain. Variation is a deterministic smooth
+spatial mask; it does not flicker while the brush is held in place. A low mesh
+vertex resolution will limit the smallest visible patches. This mechanism
+does not add more than four simultaneous material texture slots.
+
+## Sculpt
+Activate Sculpt, choose Raise, Lower, Smooth or Flatten, set radius and strength
+and left-drag over a generated mesh. Height changes are applied to a copy of
+the mesh and normals are recalculated. At stroke completion, static collision is rebuilt from the edited vertices.
+The same Undo/Redo action restores geometry and collider shape. Smoothing uses immediate grid
+neighbors rather than scanning the full vertex array for each affected point.
+
+Sculpting requires a single-surface, regular row-major heightfield ArrayMesh.
+Heights are read from its vertices; legacy height metadata is not required.
+Irregular imported meshes are rejected.
+Like painting, it currently rebuilds the ArrayMesh during strokes. Prefer
+64–96-cell terrain for smooth editing, and profile before increasing density.
+
+## Collision
+The Collision mode lets you configure independent static physics resolution and
+rebuild when explicitly requested. Brush material paint never updates collision.
+Sculpting updates it only at stroke end.
+
+## Compatibility and validation
+No runtime lab or continuously executing editor script is required. Preserve
+existing TerrainConfiguration resource compatibility. New editor features still
+require interactive Godot 4.7 verification: parsing, toolbar layout, actual
+mode switching, changing stamp presets, texture height bands, sculpting,
+Undo/Redo, save/reopen and collider alignment. Do not treat unrun checks as green.
+
+## Sculpt cursor verification
+After selecting the mesh and Sculpt, move the pointer across hills and edges.
+The orange outline must conform to the terrain and clip at patch boundaries.
+Radius is measured in terrain local XZ metres; non-uniform scaling can change
+the apparent world radius. Only regular heightfield grids are editable. A mesh having a square number of
+vertices alone is not sufficient.
+
+## Scene size and resource persistence
+
+Generated visual meshes and colliders are now saved under
+`res://terrainy_generated/` as compressed external `.res` resources. Do not
+remove that folder: scenes refer to these resources. Terrain height samples are
+reconstructed from the mesh instead of serialized again as metadata.
+Re-generate once (or make a new Paint/Sculpt stroke) and save the scene to
+externalize terrain from scenes created before this change. Make a backup of
+existing edited scenes before regeneration, because regenerating still removes
+manual paint/sculpt modifications.
+
+The Scene file should not embed the full ArrayMesh or collision face arrays
+after migration. A revision is saved separately to avoid mutating the mesh
+referenced by Undo/Redo. Old unused generated files may accumulate and should
+only be cleaned up after checking scene references.
+
+## Held brush
+
+The first stamp applies immediately when the left mouse button is pressed.
+While held in Paint or Sculpt mode, a new stamp is applied approximately every
+90 ms even if the cursor stays stationary. A whole stroke remains one
+Undo/Redo action; collision is rebuilt at stroke completion.
+
+Paint and Sculpt both expose the same five bundled brush presets and a custom
+Texture2D selector, and share the chosen brush shape.
+
+## Organic sculpting by default
+
+Raise and Lower use quintic smootherstep brush falloff, light crown rounding,
+and a local slope ceiling (38° by default), protecting pre-existing steep
+features. The organic correction runs only in the affected grid rectangle and
+does not require a separate Smooth pass. Smooth and Flatten remain available
+for deliberate artistic changes. The imported brush mask still modulates the
+footprint. Repeated stamps keep their natural transition rather than forcing
+a sharp cone at the center.
+
+The result depends on grid density and the chosen brush mask. Very small radii
+relative to vertex spacing cannot produce detailed smooth curves. No new GUI
+options are needed for this default behavior. Test edits on steep terrain,
+patch edges and after many held stamps; confirm collision and Undo/Redo.
+
+## Continuous grid strokes
+
+Begin Sculpt on a selected tile and drag onto a compatible sibling: picking
+uses all participating tile buffers for the duration of the stroke. Shared
+edges and four-way corners receive identical heights and normals. Radius,
+strength and Flatten height remain in the selected tile's local frame when
+its grid parent is transformed. Paint remains per tile.
+
+Changing the active tool completes the previous stroke before switching its
+paint/sculpt and collider behavior. See [validation](VALIDATION.md) for headless
+coverage and the remaining visual editor checks.
+
+## Brush interaction and responsiveness
+
+The brush now samples a continuous cursor path at regular **terrain-space**
+intervals (approximately 18% of the brush radius, with a 0.25m minimum).
+Fast mouse movement interpolates intermediate stamps instead of leaving gaps;
+the sampler limits each input event to 48 stamps to prevent extreme pointer
+jumps from blocking the editor. Samples are shared by Paint and Sculpt.
+
+The first stamp applies on mouse-down. Holding the left button stationary still
+adds stamps through the existing timer, and releasing commits one Undo/Redo
+stroke. Leaving the terrain interrupts path continuity, so returning from an
+empty part of the viewport does not paint an unintended straight line.
+Alt/Ctrl/Command mouse-down keeps Godot navigation and viewport shortcuts
+available; tool switching ends the active stroke.
+
+The brush outline follows the triangulated heightfield and reuses cached
+editable vertices instead of rereading the entire ArrayMesh on each overlay
+draw. Preview mesh uploads are still throttled during the stroke.
+
+Run `tests/terrain_stroke_sampling_checks.gd` alongside the existing brush
+regressions. In Godot 4.7, specifically test slow/fast drags, stationary holds,
+leaving/re-entering terrain, keyboard navigation, and rapid zoom changes.
