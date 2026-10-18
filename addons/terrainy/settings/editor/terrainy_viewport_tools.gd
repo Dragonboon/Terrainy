@@ -28,6 +28,8 @@ var target_select: OptionButton
 var layer_select: OptionButton
 var material_picker: EditorResourcePicker
 var secondary_material_picker: EditorResourcePicker
+var material_preview: TextureRect
+var secondary_material_preview: TextureRect
 var dual_toggle: CheckBox
 var dual_row: HFlowContainer
 var secondary_select: OptionButton
@@ -149,8 +151,8 @@ func _create_palette() -> void:
 func _create_context() -> void:
 	context = VBoxContainer.new()
 	context.name = "Terrainy Context"
-	context.custom_minimum_size = Vector2(0, 44)
-	context.add_theme_constant_override("separation", 2)
+	context.custom_minimum_size = Vector2.ZERO
+	context.add_theme_constant_override("separation", 1)
 	context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var select_row := HFlowContainer.new()
 	select_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -184,41 +186,45 @@ func _create_context() -> void:
 
 	var paint_row := HFlowContainer.new()
 	paint_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_add_label(paint_row, "Paint · Material")
+	paint_row.add_theme_constant_override("h_separation", 7)
+	paint_row.add_theme_constant_override("v_separation", 2)
+	_add_label(paint_row, "Material")
 	layer_select = OptionButton.new()
-	layer_select.custom_minimum_size.x = 150
+	layer_select.custom_minimum_size = Vector2(110, 28)
 	layer_select.tooltip_text = "Choose ONE terrain material to paint. The selected texture is shown beside it."
 	for material_name in ["Base", "Grass", "Rock", "Soil"]:
 		layer_select.add_item(material_name)
 	layer_select.select(0)
 	layer_select.item_selected.connect(_select_primary_material)
 	paint_row.add_child(layer_select)
+	material_preview = _small_texture_preview(paint_row)
 
 	_add_label(paint_row, "Texture")
 	material_picker = EditorResourcePicker.new()
 	material_picker.base_type = "Texture2D"
-	material_picker.custom_minimum_size.x = 160
+	material_picker.custom_minimum_size = Vector2(120, 28)
+	material_picker.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	material_picker.tooltip_text = "Texture for the SELECTED material only. Drag a project Texture2D here or use Quick Load."
 	material_picker.resource_changed.connect(_change_primary_material_texture)
 	paint_row.add_child(material_picker)
 
 	dual_toggle = CheckBox.new()
-	dual_toggle.text = "Mix two materials"
+	dual_toggle.text = "Mix 2"
 	dual_toggle.tooltip_text = "Optional: include a second material during this brush stroke."
 	dual_toggle.button_pressed = false
 	dual_toggle.toggled.connect(_toggle_dual_paint)
 	paint_row.add_child(dual_toggle)
 
-	_add_label(paint_row, "Size")
+	_add_label(paint_row, "Radius")
 	radius_input = _spin(paint_row, 0.5, 128.0, 0.5, 12.0, " m")
 	radius_input.value_changed.connect(func(value: float): painter.radius = value)
 	_add_label(paint_row, "Strength")
 	strength_input = _spin(paint_row, 0.01, 1.0, 0.05, 0.35, "")
 	strength_input.value_changed.connect(func(value: float): painter.strength = value)
 
-	_add_label(paint_row, "Brush shape")
+	_add_label(paint_row, "Shape")
 	brush_presets = OptionButton.new()
-	brush_presets.custom_minimum_size.x = 120
+	brush_presets.custom_minimum_size = Vector2(110, 28)
 	brush_presets.tooltip_text = "The brush shape changes the footprint, not the selected terrain material."
 	for name in ["Soft circle", "Hard circle", "Hill", "Mountain", "Acrylic", "Custom"]:
 		brush_presets.add_item(name)
@@ -228,7 +234,8 @@ func _create_context() -> void:
 
 	brush_picker = EditorResourcePicker.new()
 	brush_picker.base_type = "Texture2D"
-	brush_picker.custom_minimum_size.x = 125
+	brush_picker.custom_minimum_size = Vector2(112, 28)
+	brush_picker.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	brush_picker.visible = false
 	brush_picker.tooltip_text = "Custom brush MASK: this does not replace the selected terrain texture."
 	brush_picker.edited_resource = painter.brush_texture
@@ -242,20 +249,24 @@ func _create_context() -> void:
 	# never need to navigate the secondary controls.
 	dual_row = HFlowContainer.new()
 	dual_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dual_row.add_theme_constant_override("h_separation", 7)
+	dual_row.add_theme_constant_override("v_separation", 2)
 	dual_row.visible = false
 	_add_label(dual_row, "Second material")
 	secondary_select = OptionButton.new()
-	secondary_select.custom_minimum_size.x = 140
+	secondary_select.custom_minimum_size = Vector2(108, 28)
 	for material_name in ["Base", "Grass", "Rock", "Soil"]:
 		secondary_select.add_item(material_name)
 	secondary_select.select(1)
 	secondary_select.item_selected.connect(_select_secondary_material)
 	dual_row.add_child(secondary_select)
+	secondary_material_preview = _small_texture_preview(dual_row)
 
 	_add_label(dual_row, "Texture")
 	secondary_material_picker = EditorResourcePicker.new()
 	secondary_material_picker.base_type = "Texture2D"
-	secondary_material_picker.custom_minimum_size.x = 150
+	secondary_material_picker.custom_minimum_size = Vector2(118, 28)
+	secondary_material_picker.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	secondary_material_picker.tooltip_text = "Optional second material texture. Uses another of the four existing terrain slots."
 	secondary_material_picker.resource_changed.connect(_change_secondary_material_texture)
 	dual_row.add_child(secondary_material_picker)
@@ -707,23 +718,44 @@ func _sync_material_pickers() -> void:
 	if material_picker == null or secondary_material_picker == null:
 		return
 	var material := _surface_material()
-	for slot in range(PAINT_TEXTURE_UNIFORMS.size()):
-		var texture: Texture2D = null
-		if material != null:
-			texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot]) as Texture2D
-		layer_select.set_item_icon(slot, texture)
-		secondary_select.set_item_icon(slot, texture)
 	var primary: int = layer_select.selected
-	if primary >= 0 and primary < PAINT_TEXTURE_UNIFORMS.size() and material != null:
-		material_picker.edited_resource = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[primary]) as Texture2D
-	else:
-		material_picker.edited_resource = null
+	var primary_texture: Texture2D = null
+	if material != null and primary >= 0 and primary < PAINT_TEXTURE_UNIFORMS.size():
+		primary_texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[primary]) as Texture2D
+	# Never use source textures directly as OptionButton icons. Godot's
+	# popup sizes each entry to the texture's ORIGINAL pixel dimensions:
+	# a 256x256 icon expands the menu and the entire bottom editor dock.
+	if material_picker.edited_resource != primary_texture:
+		material_picker.edited_resource = primary_texture
+	material_preview.texture = primary_texture
+	material_preview.tooltip_text = _texture_tooltip(primary_texture)
 	var secondary: int = secondary_select.selected
-	if secondary >= 0 and secondary < PAINT_TEXTURE_UNIFORMS.size() and material != null:
-		secondary_material_picker.edited_resource = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[secondary]) as Texture2D
-	else:
-		secondary_material_picker.edited_resource = null
+	var secondary_texture: Texture2D = null
+	if material != null and secondary >= 0 and secondary < PAINT_TEXTURE_UNIFORMS.size():
+		secondary_texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[secondary]) as Texture2D
+	if secondary_material_picker.edited_resource != secondary_texture:
+		secondary_material_picker.edited_resource = secondary_texture
+	secondary_material_preview.texture = secondary_texture
+	secondary_material_preview.tooltip_text = _texture_tooltip(secondary_texture)
 
+
+func _texture_tooltip(texture: Texture2D) -> String:
+	if texture == null:
+		return "No texture assigned"
+	return texture.resource_path if not texture.resource_path.is_empty() else "Unsaved Texture2D"
+
+
+func _small_texture_preview(parent: Control) -> TextureRect:
+	var preview := TextureRect.new()
+	preview.custom_minimum_size = Vector2(28, 28)
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	preview.mouse_filter = Control.MOUSE_FILTER_PASS
+	preview.clip_contents = true
+	parent.add_child(preview)
+	return preview
 
 func _change_primary_material_texture(resource: Resource) -> void:
 	_change_material_texture(resource, layer_select.selected)
