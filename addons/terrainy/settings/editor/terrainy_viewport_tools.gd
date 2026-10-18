@@ -190,11 +190,11 @@ func _create_context() -> void:
 	underwater_check.tooltip_text = "Generate a smooth volcanic underwater base. Advanced depth and roughness controls: Edit Profile."
 	underwater_check.toggled.connect(_toggle_underwater)
 	generation_row.add_child(underwater_check)
-	generate_button = _add_button(generation_row, "Generate New", "Create a new seeded variation; manual edits are protected.", _generate)
+	generate_button = _add_button(generation_row, "Generate New", "Replace the selected terrain, including previous Sculpt/Paint edits, with a new seed.", _generate)
 	random_generation_check = CheckBox.new()
 	random_generation_check.text = "Vary"
 	random_generation_check.button_pressed = true
-	random_generation_check.tooltip_text = "Generate a fresh seeded variation. Turn off to reproduce the last generated seed and parameters."
+	random_generation_check.tooltip_text = "Generate a fresh seeded variation. Turn off to repeat the last generation on the SELECTED mesh."
 	generation_row.add_child(random_generation_check)
 	context.add_child(generation_row)
 	tool_rows.append(generation_row)
@@ -502,14 +502,10 @@ func _generate() -> void:
 	if current_profile == null:
 		_status("Choose a terrain configuration.")
 		return
-	# Never replace a manually painted or sculpted saved terrain through
-	# one-click exploration. Create a sibling and keep the source intact.
+	# Explicitly replace the selected mesh, including previous manual edits.
+	# This is the editor author's intended Generate New behavior; it never
+	# creates sibling meshes unless the user presses + Mesh.
 	var variation: bool = random_generation_check.button_pressed
-	if mesh.mesh != null:
-		_create_target()
-		mesh = _target()
-	if mesh == null:
-		return
 	_busy = true
 	generate_button.disabled = true
 	var selected_profile: TerrainConfiguration = current_profile.duplicate(true) as TerrainConfiguration
@@ -535,6 +531,9 @@ func _generate() -> void:
 	last_generated_profile = selected_profile.duplicate(true) as TerrainConfiguration
 	var result: Dictionary = Builder.build(selected_profile)
 	if result.get("error", FAILED) == OK:
+		# Stop pending brush input before changing the surface below the cursor.
+		painter.set_active(false)
+		painter.edit(null)
 		mesh.mesh = result["mesh"]
 		mesh.add_to_group(&"terrains", true)
 		generator.terrains[mesh] = selected_profile
