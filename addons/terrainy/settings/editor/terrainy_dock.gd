@@ -168,7 +168,7 @@ func _rebuild_collision() -> void:
 	if mesh == null:
 		_status("No mesh selected.")
 		return
-	var profile: TerrainConfiguration = generator.terrains.get(mesh)
+	var profile: TerrainConfiguration = generator.terrains.get(mesh) as TerrainConfiguration
 	if profile == null:
 		_status("No profile assigned.")
 		return
