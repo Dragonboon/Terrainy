@@ -11,7 +11,8 @@ args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 checks = [['--editor', '--import']]
 checks += [['--script', f'res://tests/{name}.gd'] for name in (
-    'terrain_grid_checks', 'terrain_grid_sculpt_checks', 'terrain_edit_regression_checks'
+    'terrain_grid_checks', 'terrain_grid_sculpt_checks', 'terrain_edit_regression_checks',
+    'terrain_dual_paint_checks'
 )]
 for check in checks:
     command = [args.godot, '--headless', '--path', str(root), *check]
