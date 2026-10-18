@@ -39,8 +39,8 @@ Stroke edits are Undo/Redo actions.
 These are separate inputs:
 
 - **Surface textures** define what the four terrain material channels look
-  like. In **Paint → Surface textures**, assign any project-imported
-  `Texture2D` to Base, Grass, Rock or Soil. Bundled Dirt textures are the
+  like. In **Paint → Material → Texture**, assign any project-imported
+  `Texture2D` to the currently selected Base, Grass, Rock or Soil slot. Bundled Dirt textures are the
   default examples. You can change them without regenerating the heightfield.
 - **Brush presets / Brush Texture2D** affect only the *shape and opacity*
   of the painting footprint, not the material being painted.
@@ -53,9 +53,15 @@ shader uniforms; arbitrary shader parameter layouts are not supported.
 
 ### Dual-material organic brush
 
-Select a **primary** material with the usual Paint layer selector. Set
-**Secondary** to another channel (or **Off**), **Mix** to its approximate
-proportion, and **Variation** to control the amount of irregular local mixing.
+The Paint bar defaults to **one material**. Choose Base, Grass, Rock or Soil
+from the material dropdown, which shows the currently assigned texture icon.
+The adjacent Texture2D picker edits **only the selected material**, not all
+four slots. Clearing it restores the bundled example texture.
+
+Enable **Mix two materials** to reveal a separate optional row. Pick the
+second material (it cannot equal the primary), then adjust **Proportion**
+and **Organic variation**. Turning Mix off immediately restores single-layer
+painting without changing existing painted areas.
 The paint stroke writes both RGBA material weights in the same vertex pass,
 with one Undo/Redo action and no extra mesh upload.
 

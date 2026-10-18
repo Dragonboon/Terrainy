@@ -54,7 +54,7 @@ The five bundled profiles, shader materials and brush masks live inside the addo
 1. In **Generate**, choose **Soft Hills** (or another preset), click **+ Mesh** once and then **Generate**.
 2. Inspect the terrain in the 3D viewport. Use **Edit Profile** to change the underlying Resource, then generate again when ready.
 3. Select the generated `MeshInstance3D`, switch to **Sculpt**, and use Raise/Lower/Smooth/Flatten. Choose a supplied brush stamp or assign any `Texture2D`.
-4. Switch to **Paint** to assign your own Base, Grass, Rock and Soil textures, then paint one material or combine two channels using Secondary/Mix/Variation over the automatic biome.
+4. Switch to **Paint**, select a material and paint immediately. The adjacent Texture2D field edits only that material; optional **Mix two materials** reveals secondary/proportion/variation settings over the automatic biome.
 5. Open **Collision** to enable physics, choose a collision resolution and explicitly rebuild if needed.
 6. **Save the scene**, including the referenced `terrainy_generated/` resources.
 
