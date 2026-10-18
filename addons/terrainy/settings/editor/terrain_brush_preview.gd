@@ -15,7 +15,8 @@ static func draw(
 	contact: Vector3,
 	radius: float,
 	sculpt_mode: bool,
-	operation: int
+	operation: int,
+	cached_vertices: PackedVector3Array = PackedVector3Array()
 ) -> void:
 	if not is_instance_valid(camera) or not is_instance_valid(terrain):
 		return
@@ -24,7 +25,9 @@ static func draw(
 	var mesh := terrain.mesh as ArrayMesh
 	if mesh.get_surface_count() != 1:
 		return
-	var vertices: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var vertices: PackedVector3Array = cached_vertices
+	if vertices.is_empty():
+		vertices = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	var stride := int(round(sqrt(float(vertices.size()))))
 	if stride < 2 or stride * stride != vertices.size():
 		return

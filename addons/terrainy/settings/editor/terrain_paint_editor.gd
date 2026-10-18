@@ -84,6 +84,14 @@ func update_hover(camera: Camera3D, mouse_position: Vector2) -> void:
 		hover_valid = true
 
 
+func preview_vertices() -> PackedVector3Array:
+	if _session != null and _session.valid:
+		return _session.vertices
+	if _hover_session != null and _hover_session.valid:
+		return _hover_session.vertices
+	return PackedVector3Array()
+
+
 func repeat_held_stamp() -> void:
 	# Mouse release can occur outside the 3D viewport, bypassing forward_input.
 	if stroke_active and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -140,6 +148,10 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 		var hit: Dictionary = _hit(camera, event.position)
 		if not hit.is_empty():
 			_apply_path(hit["position"])
+		else:
+			# Do not join across off-terrain pointer excursions.
+			last_local_point = Vector3(INF, INF, INF)
+			_stroke_carry = 0.0
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
 

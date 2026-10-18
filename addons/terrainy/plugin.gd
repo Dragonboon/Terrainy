@@ -129,7 +129,8 @@ func _forward_3d_draw_over_viewport(overlay: Control) -> void:
 	TerrainBrushPreview.draw(
 		overlay, _preview_camera, paint_editor.target,
 		paint_editor.hover_position, paint_editor.radius,
-		paint_editor.sculpt_enabled, paint_editor.sculpt_operation
+		paint_editor.sculpt_enabled, paint_editor.sculpt_operation,
+		paint_editor.preview_vertices()
 	)
 
 
