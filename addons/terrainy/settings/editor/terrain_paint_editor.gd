@@ -173,7 +173,9 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 
 
 func _flush_preview() -> void:
-	if _session == null or not _session.valid or not _session.dirty:
+	if _session == null or not _session.valid:
+		return
+	if _grid_session == null and not _session.dirty:
 		return
 	if _grid_session != null and not _grid_session.nodes.is_empty():
 		_grid_session.flush()
