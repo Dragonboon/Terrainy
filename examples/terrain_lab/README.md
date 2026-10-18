@@ -1,28 +1,24 @@
-# Terrainy — Editor-only example
+# Terrainy — editor example
 
-Open `res://examples/terrain_lab/terrain_lab.tscn`, then select its
-`Terrainy` node. The example has no runtime generation or editor polling.
+Open `res://examples/terrain_lab/terrain_lab.tscn` and select Terrainy.
+The scene does not run a script or build terrain automatically.
 
-The **3D viewport** now displays a compact vertical Terrainy tool palette at
-the left and one horizontal contextual row at the bottom. The old right-hand
-dock was removed so it does not compress or interfere with the Inspector.
+Use the **four icons at the bottom-left edge of the 3D viewport** to switch
+Cursor, Generate, Paint and Collision. Contextual settings appear in one
+horizontal strip along the bottom of the editor viewport.
 
-- **Generate**: choose from Soft hills, Highlands, Mountains, Island or Dunes,
-  create the mesh, edit the configuration Resource and generate on demand.
-- **Paint**: select the generated mesh; choose layer, radius and strength in
-  the bottom row. Paint with left-drag. Ctrl+Z undoes a stroke.
-- **Collision**: enable/disable static collision, change the independent physics
-  resolution and rebuild only when needed.
-- **Cursor**: return to regular viewport selection.
+In Generate choose a profile and click + Mesh and Generate. The five presets
+come with different relief/noise and with textured automatic biome rendering:
+altitude controls grass/soil/rock distribution, steep slopes favor rock,
+and triplanar textures and macro-variation reduce tiling.
 
-Once generated, save the scene. Generated mesh and static collision belong to
-the scene, not an automatic runtime lab. Changing a profile does nothing until
-Generate is pressed. Regeneration currently overwrites painted vertex colors.
+In Paint, select a generated mesh, choose a layer and set radius/strength.
+The Texture2D resource picker accepts imported/custom brush masks, and ships
+with a default from `src/terrain/brush/textures/`. Painted layers blend
+with automatic heights and slopes. Use Undo/Redo and save your scene.
 
-The toolbar works when a Terrainy node is added to **any** Godot 3D scene.
-For a hand-authored custom Resource, link the profile to the mesh in
-`Terrainy.terrains` and select **Custom / existing**.
+In Collision, change independent physics resolution and rebuild explicitly.
+The previous inverted geometry must be regenerated to fix its triangle winding.
+Regeneration still discards manual edits.
 
-Painting hits currently traverse geometry; default bounded resolutions and
-stroke spacing limit the cost, but a brush spatial acceleration structure is
-still a separate performance task. No streaming subsystem is required.
+No play mode, background editor generation or streamer is involved.

@@ -1,24 +1,44 @@
-# Terrainy — viewport-integrated editor tools
+# Terrainy — viewport painting and automatic materials
 
-Terrainy's four-mode tool palette appears on the left side **inside the 3D
-editor**, only while a Terrainy generator or one of its generated terrains is
-selected. Contextual controls appear in a single row below the 3D view.
-There is **no right Inspector dock**.
+Select a Terrainy node in the Godot 3D editor. Its four tool icons appear at the
+**bottom of the left toolbar**. The horizontal contextual strip changes between
+Generate, Paint and Collision. No right-hand dock or runtime lab is required.
 
-Select **Generate** to pick one of the five included Resource presets; create a
-mesh and generate explicitly. **Paint** offers four RGBA material-weight
-channels, radius and strength. Select the generated mesh and drag in the 3D
-viewport. Each stroke is an Undo/Redo action. Use a material compatible with
-vertex colors. **Collision** lets you rebuild a lower-resolution static collider
-using the same source height samples. **Cursor** disables paint input.
+## Generate
+Create a mesh, choose one of five presets and click Generate. New meshes use
+up-facing triangle winding and matching static collider orientation. **Regenerate
+existing meshes** made with the previous inverted winding implementation.
+Presets use Terrainy's existing Dirt_07/10/13/20 and Perlin_01 textures.
 
-The plugin does not run a world generator, process editor frames or update
-heightmaps until requested. Saving the scene persists its mesh and collider.
-Regeneration still replaces paint, which is tracked in mesh vertex colors.
+## Material
+The bundled `editor_four_layers.gdshader` blends Base, Grass, Rock and Soil
+according to world height, surface slope and smooth thresholds. Its texture
+uniforms, tints, height range, slope threshold, triplanar scale and variation
+strength can be edited in the profile's ShaderMaterial.
 
-### Validation
-In Godot 4.7, verify the palette remains accessible with the Inspector open;
-switching tools shows exactly one contextual row; editor camera navigation
-still works; selection swaps correctly between Terrainy and mesh; generation,
-painting, Undo/Redo, saving/reopening and collision rebuilding remain functional.
-Headless import does not prove the viewport layout.
+The shader uses triplanar projection and low-frequency noise to break up
+tiling. Manual painting blends over the automatic biome via a separate UV2.x
+influence field: unpainted terrain keeps its altitude/slope appearance.
+The automatic biome is not permanently baked into vertex colors.
+
+The generator populates UV2 on newly generated meshes. Painted masks and manual
+weights are stored in the ArrayMesh and survive a scene save, **but not**
+regeneration. Material uniforms can be changed without regenerating the mesh.
+
+## Paint
+In Paint mode choose Base/Grass/Rock/Soil, brush radius, strength and an
+optional Texture2D brush mask via the resource picker. The default is the
+bundled soft circular brush. The mask is sampled using the local XY-plane
+brush footprint (terrain XZ); its alpha is used when nonopaque, otherwise its
+red channel. A blank brush texture removes stamping variation.
+
+Painting is an Undo/Redo operation per stroke. Large meshes still incur mesh
+reconstruction cost during a stroke. Use moderate 64–96 cell patches unless
+profiling shows additional density is affordable.
+
+## Verify
+Check up-facing geometry, shadows, single-sided rendering, ray picking,
+collision from above, preset biome distinctions, custom texture assignment,
+height/slope transitions and painting strength. Save/reopen and regenerate
+to confirm known persistence limitations. The new UI and shader need live
+Godot validation before the PR can be merged.
