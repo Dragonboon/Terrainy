@@ -112,7 +112,7 @@ static func _rings(
 				var b: int = ring * count + nxt
 				var c: int = (ring + 1) * count + j
 				var d: int = (ring + 1) * count + nxt
-				indices.append_array(PackedInt32Array([a, c, b, b, c, d]))
+				indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
 	var bottom_center: int = vertices.size() - 1
 	vertices[bottom_center] = Vector3(0.0, seabed, 0.0)
 	uvs[bottom_center] = Vector2(0.5, 1.0)
