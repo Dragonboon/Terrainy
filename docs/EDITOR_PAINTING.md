@@ -156,3 +156,26 @@ its grid parent is transformed. Paint remains per tile.
 Changing the active tool completes the previous stroke before switching its
 paint/sculpt and collider behavior. See [validation](VALIDATION.md) for headless
 coverage and the remaining visual editor checks.
+
+## Brush interaction and responsiveness
+
+The brush now samples a continuous cursor path at regular **terrain-space**
+intervals (approximately 18% of the brush radius, with a 0.25m minimum).
+Fast mouse movement interpolates intermediate stamps instead of leaving gaps;
+the sampler limits each input event to 48 stamps to prevent extreme pointer
+jumps from blocking the editor. Samples are shared by Paint and Sculpt.
+
+The first stamp applies on mouse-down. Holding the left button stationary still
+adds stamps through the existing timer, and releasing commits one Undo/Redo
+stroke. Leaving the terrain interrupts path continuity, so returning from an
+empty part of the viewport does not paint an unintended straight line.
+Alt/Ctrl/Command mouse-down keeps Godot navigation and viewport shortcuts
+available; tool switching ends the active stroke.
+
+The brush outline follows the triangulated heightfield and reuses cached
+editable vertices instead of rereading the entire ArrayMesh on each overlay
+draw. Preview mesh uploads are still throttled during the stroke.
+
+Run `tests/terrain_stroke_sampling_checks.gd` alongside the existing brush
+regressions. In Godot 4.7, specifically test slow/fast drags, stationary holds,
+leaving/re-entering terrain, keyboard navigation, and rapid zoom changes.
