@@ -1,24 +1,28 @@
-# Terrainy: editor-only example
+# Terrainy — Editor-only example
 
-Open `res://examples/terrain_lab/terrain_lab.tscn`. The scene contains
-**only** a Terrainy node, a camera, simple lighting and an environment.
-No @tool harness, embedded generated mesh, runtime runner or automatic generation.
+Open `res://examples/terrain_lab/terrain_lab.tscn`, then select its
+`Terrainy` node. The example has no runtime generation or editor polling.
 
-1. Select `Terrainy`. The **Terrainy · Editor** dock opens on the right.
-2. Choose a profile: Soft hills, Highlands, Mountains, Island or Dunes.
-3. Press **Add terrain mesh** (once), then **Generate terrain**.
-4. Select the resulting `EditableTerrain` mesh and enable **Paint Terrain**
-   in the 3D viewport toolbar to blend up to four channels.
-5. Configure the profile through **Edit selected Resource**, regenerate on
-   demand and use **Rebuild collision** when changing the physics resolution.
-6. Save the scene to preserve the generated geometry and collision.
+The **3D viewport** now displays a compact vertical Terrainy tool palette at
+the left and one horizontal contextual row at the bottom. The old right-hand
+dock was removed so it does not compress or interfere with the Inspector.
 
-The dock operates on the **selected Terrainy node**; it also works when a Terrainy
-node is dropped into any existing 3D scene. For custom heightmap or noise resources
-assign the configuration to `Terrainy.terrains` and use **Custom / existing**.
+- **Generate**: choose from Soft hills, Highlands, Mountains, Island or Dunes,
+  create the mesh, edit the configuration Resource and generate on demand.
+- **Paint**: select the generated mesh; choose layer, radius and strength in
+  the bottom row. Paint with left-drag. Ctrl+Z undoes a stroke.
+- **Collision**: enable/disable static collision, change the independent physics
+  resolution and rebuild only when needed.
+- **Cursor**: return to regular viewport selection.
 
-Generation is explicit; opening the example never rebuilds terrain in the
-background. No play-mode or F6 step is needed. **Regeneration replaces paint**
-until non-destructive layer storage is added.
+Once generated, save the scene. Generated mesh and static collision belong to
+the scene, not an automatic runtime lab. Changing a profile does nothing until
+Generate is pressed. Regeneration currently overwrites painted vertex colors.
 
-This sample is deliberately tiny and is not part of the distributable addon.
+The toolbar works when a Terrainy node is added to **any** Godot 3D scene.
+For a hand-authored custom Resource, link the profile to the mesh in
+`Terrainy.terrains` and select **Custom / existing**.
+
+Painting hits currently traverse geometry; default bounded resolutions and
+stroke spacing limit the cost, but a brush spatial acceleration structure is
+still a separate performance task. No streaming subsystem is required.

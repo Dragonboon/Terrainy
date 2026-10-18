@@ -1,39 +1,30 @@
-# Terrainy: editor-first morphology roadmap
+# Terrainy editor-first principles
 
-## Current architecture
-Select Terrainy and use its custom dock: create an editable mesh, choose a
-preset, generate, paint layers in the 3D viewport, or rebuild a decimated static
-collision mesh. The editor example is intentionally lightweight and never
-generates geometry on load or at runtime.
+Terrainy targets lightweight 3D level design, not an entire streamed landscape
+manager. Its dedicated controls now live in the 3D editor: a slim vertical
+palette and a mode-dependent horizontal control row. Normal Godot Inspector
+space is preserved. Operations are explicit, not executed continuously.
 
-The dock generator uses one sampled height grid for both visual triangles and
-physics. The five `addons/terrainy/presets/` configurations are independently
-editable resources: soft hills, highlands, mountains, island and dunes.
-Optional smoothing and slope limiting are adapted from Nautica's morphological
-preprocessing. These changes are additive to existing configuration classes.
+## Morpho­logy
+The current independent organic terrain builder supports deterministic noise,
+optional detail, small-kernel smoothing and world-space slope limiting. Five
+reusable resource profiles make it fast to compare shapes. Nautica's recipe
+preprocessing demonstrates why controlling peak slopes and feature frequency is
+more valuable than continually raising mesh resolution.
 
-## Important caveats
-- The editor generator is synchronous **only when Generate is clicked**;
-  no expensive work is done in idle callbacks.
-- The low-resolution triangle collision is suitable for static terrain;
-  choose higher collision_resolution for accurate high-frequency gameplay.
-- Paint is stored as mesh vertex colors. Generating again discards paint.
-- This is **not** a streaming world generator and does not use Nautica/Nucleus
-  scripts as dependencies.
-- Legacy runtime Terrainy generation remains available; its prior threading
-  limitations are not addressed by the new editor-only path.
-- A focused regression of editor input, resources, scene save/reopen, normal
-  orientation, static collision and collider refresh is required before merge.
+## Collision
+Low-resolution static concave collision is derived from the same visual height
+field. Its resolution is independent of visual mesh subdivision and editable in
+the contextual toolbar. Changes to material weights do not rebuild collision.
 
-## Research transfer
-Nautica preprocesses a reproducible height source: low-frequency relief,
-smoothing, slope ceilings, shoreline masks and bilinear resizing. Terrainy uses
-its own compact version, not the game-specific island streaming policy.
+## Nucleus lessons, intentionally scoped
+Nucleus streams a moving linear window with limited work per update and
+world-coherent patch sampling. Terrainy should preserve these performance
+principles but should not require streaming infrastructure for editor-generated
+terrain. Optional streaming is future work, after editing is stable.
 
-Nucleus separates sampler, mesh and collision, and bounds runtime work
-per update; its linear streaming window is not appropriate as Terrainy's
-required editor architecture. Avoid carrying over full LOD/streaming systems.
-
-## Next priority
-Non-destructive vertex paint storage that survives regeneration, plus faster
-viewport brush hit lookup on large grids and performance regression tests.
+## Remaining work
+- Save paint layers independently so they survive regeneration.
+- Accelerate brush intersections for dense meshes.
+- Test the new UI visually on Godot 4.7 and profile long strokes.
+- Provide clear warning when a high visual/collision resolution may be expensive.
