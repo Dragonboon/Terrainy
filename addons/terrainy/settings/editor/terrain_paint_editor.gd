@@ -76,7 +76,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			# Allow viewport camera navigation with Alt, rather than hijacking editor controls.
 			if event.alt_pressed:
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
-						var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
+			var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
 			if hit.is_empty():
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
 			stroke_origin = target.mesh
@@ -95,7 +95,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 		if last_mouse_point.distance_squared_to(event.position) < 16.0:
 			return EditorPlugin.AFTER_GUI_INPUT_STOP
 		last_mouse_point = event.position
-				var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
+		var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
 		if not hit.is_empty():
 			_apply(hit.position)
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
