@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="TerrainNoiseConfiguration" format=3]
+
+[ext_resource type="Script" path="res://addons/terrainy/src/terrain/configurations/terrain_noise_configuration.gd" id="1_script"]
+[ext_resource type="Shader" path="res://addons/terrainy/shaders/terrain/vertex_paint.gdshader" id="2_shader"]
+
+[sub_resource type="FastNoiseLite" id="MainNoise"]
+seed = 17018
+frequency = 0.005
+fractal_type = 1
+fractal_octaves = 3
+fractal_gain = 0.38
+domain_warp_enabled = true
+domain_warp_amplitude = 8.0
+
+[sub_resource type="FastNoiseLite" id="DetailNoise"]
+seed = 17089
+frequency = 0.015
+fractal_type = 1
+fractal_octaves = 2
+
+[sub_resource type="ShaderMaterial" id="TerrainColor"]
+shader = ExtResource("2_shader")
+
+[resource]
+resource_local_to_scene = true
+script = ExtResource("1_script")
+id = &"soft_hills"
+name = &"soft hills"
+noise = SubResource("MainNoise")
+detail_noise = SubResource("DetailNoise")
+mesh_resolution = 64
+max_terrain_height = 24.0
+collision_resolution = 24
+generate_collision = true
+terrain_material = SubResource("TerrainColor")
+organic_generation = true
+detail_strength = 0.018
+smoothing_passes = 2
+max_slope_degrees = 25.0

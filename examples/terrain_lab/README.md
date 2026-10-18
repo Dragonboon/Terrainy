@@ -1,49 +1,24 @@
-# Terrainy lab — editor generation and painting
+# Terrainy: editor-only example
 
-Open **`res://examples/terrain_lab/terrain_lab.tscn`** with the Terrainy addon
-enabled. This scene is a development testbed, **not** part of the distributable
-`addons/terrainy/` folder. It intentionally uses only Godot and Terrainy.
+Open `res://examples/terrain_lab/terrain_lab.tscn`. The scene contains
+**only** a Terrainy node, a camera, simple lighting and an environment.
+No @tool harness, embedded generated mesh, runtime runner or automatic generation.
 
-## Quick test: editor
+1. Select `Terrainy`. The **Terrainy · Editor** dock opens on the right.
+2. Choose a profile: Soft hills, Highlands, Mountains, Island or Dunes.
+3. Press **Add terrain mesh** (once), then **Generate terrain**.
+4. Select the resulting `EditableTerrain` mesh and enable **Paint Terrain**
+   in the 3D viewport toolbar to blend up to four channels.
+5. Configure the profile through **Edit selected Resource**, regenerate on
+   demand and use **Rebuild collision** when changing the physics resolution.
+6. Save the scene to preserve the generated geometry and collision.
 
-1. Select the `Terrainy` node. Its `Terrains` dictionary is wired by
-   `TerrainLab`, and contains the `EditableTerrain` mesh with a
-   `TerrainNoiseConfiguration` profile.
-2. Click **Generate Terrains** in Terrainy's inspector.
-3. Select `EditableTerrain` in the scene tree. Enable **Paint Terrain** in the
-   3D viewport toolbar; adjust radius/strength and paint the Base, Grass, Rock
-   or Soil channel. The lab's **lit, four-color material** makes the result
-   immediately visible without requiring imported textures.
-4. Test Undo/Redo; save and reopen the scene to check persistence.
-5. For a different shape, select the **TerrainLab** root and replace
-   `Terrain Profile` with
-   `res://examples/terrain_lab/profiles/irregular_island.tres`.
-   Reopen the scene after changing the profile so the editor lab refreshes its
-   binding, then regenerate. **Regeneration replaces existing paint.**
+The dock operates on the **selected Terrainy node**; it also works when a Terrainy
+node is dropped into any existing 3D scene. For custom heightmap or noise resources
+assign the configuration to `Terrainy.terrains` and use **Custom / existing**.
 
-You can also **drop a new Terrainy node into this scene**. Assign it to
-`TerrainLab > Generator` and it will use the same target mesh and profile when
-the scene is reopened. The scene script is only a small, explicit test harness.
+Generation is explicit; opening the example never rebuilds terrain in the
+background. No play-mode or F6 step is needed. **Regeneration replaces paint**
+until non-destructive layer storage is added.
 
-## Quick test: runtime
-
-Use **Run Current Scene (F6)**. With `Generate On Play` enabled (default), the
-sample builds a deterministic terrain in runtime and the camera/light show its
-shape. Set `Generate On Play` to **false** when you want runtime to show the
-painted mesh saved in the scene, because runtime regeneration would reset the
-vertex colors.
-
-## Interpretation and limits
-
-- `gentle_hills.tres` uses fixed-seed FBM and domain warp for gentle landforms.
-- `irregular_island.tres` demonstrates the **existing** texture falloff path.
-  It is not a port of Nautica's improved slope-constrained coastline algorithm.
-- Painting changes **RGBA vertex weights only**. It does not sculpt heights.
-- `mesh_resolution = 80` is a modest starting point for testing; paint detail
-  is bounded by vertex spacing. Higher subdivision counts make editor brush
-  traversal more expensive.
-- This testbed is intentionally one terrain at a time. It does not depend on
-  Nucleus, Nautica or a world streamer.
-
-See `docs/EDITOR_PAINTING.md` for the painting contract and
-`docs/TERRAIN_DESIGN_NOTES.md` for lessons from Nucleus and Nautica.
+This sample is deliberately tiny and is not part of the distributable addon.

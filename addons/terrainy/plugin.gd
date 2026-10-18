@@ -2,8 +2,10 @@
 extends EditorPlugin
 
 const TerrainPaintEditor = preload("res://addons/terrainy/settings/editor/terrain_paint_editor.gd")
+const TerrainDock = preload("res://addons/terrainy/settings/editor/terrainy_dock.gd")
 var inspector_plugin: EditorInspectorPlugin
 var paint_editor: RefCounted
+var terrain_dock: VBoxContainer
 
 func _enter_tree() -> void:
 	inspector_plugin = preload("settings/inspector/inspector_button_plugin.gd").new()
@@ -12,8 +14,14 @@ func _enter_tree() -> void:
 	add_custom_type("TerrainBrush", "Node3D", preload("src/terrain/brush/terrain_brush.gd"), preload("assets/icons/brush.svg"))
 	paint_editor = TerrainPaintEditor.new()
 	paint_editor.setup(self)
+	terrain_dock = TerrainDock.new()
+	terrain_dock.setup(self)
+	add_control_to_dock(DOCK_SLOT_RIGHT_UL, terrain_dock)
 
 func _exit_tree() -> void:
+	remove_control_from_docks(terrain_dock)
+	terrain_dock.queue_free()
+	terrain_dock = null
 	paint_editor.cleanup()
 	paint_editor = null
 	remove_custom_type("TerrainBrush")
@@ -21,9 +29,14 @@ func _exit_tree() -> void:
 	remove_inspector_plugin(inspector_plugin)
 
 func _handles(object: Object) -> bool:
-	return paint_editor != null and paint_editor.handles(object)
+	return object is Terrainy or (paint_editor != null and paint_editor.handles(object))
 
 func _edit(object: Object) -> void:
+	if terrain_dock != null:
+		if object is Terrainy:
+			terrain_dock.set_generator(object)
+		elif object is MeshInstance3D and object.get_parent() is Terrainy:
+			terrain_dock.set_generator(object.get_parent())
 	if paint_editor != null:
 		paint_editor.edit(object)
 
