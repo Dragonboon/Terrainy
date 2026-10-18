@@ -185,20 +185,38 @@ func _weight(point: Vector3, center: Vector3, radius: float, stamp: Image, organ
 	return weight
 
 
-func paint(center: Vector3, radius: float, strength: float, layer: int, stamp: Image) -> bool:
+## A single vertex pass writes either one material or an organic mixture of two.
+## The four material slots already exist in the RGBA vertex color and shader.
+## Secondary variation is deterministic in terrain-local XZ space, so holding
+## the mouse does not animate/randomize the painted blend.
+func paint(
+	center: Vector3, radius: float, strength: float, layer: int, stamp: Image,
+	secondary_layer: int = -1, secondary_mix: float = 0.35,
+	organic_variation: float = 0.3
+) -> bool:
 	if not valid or radius <= 0.0 or layer < 0 or layer > 3 or not _brush_overlaps(center, radius):
 		return false
 	var bounds: Rect2i = _brush_rect(center, radius)
-	var target_color: Color = Color(0.0, 0.0, 0.0, 0.0)
-	target_color[layer] = 1.0
+	var dual: bool = secondary_layer >= 0 and secondary_layer < 4 and secondary_layer != layer
+	var base_mix: float = clampf(secondary_mix, 0.0, 1.0) if dual else 0.0
+	var variance: float = clampf(organic_variation, 0.0, 1.0)
 	var changed: bool = false
 	for z in range(bounds.position.y, bounds.end.y):
 		for x in range(bounds.position.x, bounds.end.x):
 			var index: int = z * stride + x
-			var weight: float = _weight(vertices[index], center, radius, stamp) * clampf(strength, 0.0, 1.0)
+			var point: Vector3 = vertices[index]
+			var weight: float = _weight(point, center, radius, stamp) * clampf(strength, 0.0, 1.0)
 			if weight <= 0.00001:
 				continue
-			colors[index] = colors[index].lerp(target_color, weight)
+			var layer_color := Color(0.0, 0.0, 0.0, 0.0)
+			if dual:
+				var noise: float = _paint_variation(point.x, point.z)
+				var ratio: float = clampf(base_mix + (noise - 0.5) * variance, 0.0, 1.0)
+				layer_color[layer] = 1.0 - ratio
+				layer_color[secondary_layer] = ratio
+			else:
+				layer_color[layer] = 1.0
+			colors[index] = colors[index].lerp(layer_color, weight)
 			var uv2: Vector2 = influences[index]
 			uv2.x = clampf(uv2.x + weight, 0.0, 1.0)
 			influences[index] = uv2
@@ -206,6 +224,28 @@ func paint(center: Vector3, radius: float, strength: float, layer: int, stamp: I
 	dirty = dirty or changed
 	return changed
 
+
+static func _paint_variation(x: float, z: float) -> float:
+	# Bilinearly blended value noise with ~7m patches. Spatial and stable:
+	# no RandomNumberGenerator calls per stamp or unbounded buffers.
+	var gx: float = x * 0.14
+	var gz: float = z * 0.14
+	var ix: float = floor(gx)
+	var iz: float = floor(gz)
+	var tx: float = gx - ix
+	var tz: float = gz - iz
+	tx = tx * tx * (3.0 - 2.0 * tx)
+	tz = tz * tz * (3.0 - 2.0 * tz)
+	var a: float = _paint_hash(ix, iz)
+	var b: float = _paint_hash(ix + 1.0, iz)
+	var c: float = _paint_hash(ix, iz + 1.0)
+	var d: float = _paint_hash(ix + 1.0, iz + 1.0)
+	return lerpf(lerpf(a, b, tx), lerpf(c, d, tx), tz)
+
+
+static func _paint_hash(x: float, z: float) -> float:
+	var value: float = sin(x * 127.1 + z * 311.7) * 43758.5453
+	return value - floor(value)
 
 ## Natural shaping is always enabled: soft radial falloff, local rounding,
 ## and a slope ceiling relative to the pre-stamp grid. Existing steep terrain
