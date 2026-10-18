@@ -148,7 +148,7 @@ func paint(center: Vector3, radius: float, strength: float, layer: int, stamp: I
 	if not valid or radius <= 0.0 or layer < 0 or layer > 3:
 		return false
 	var bounds: Rect2i = _brush_rect(center, radius)
-	var target_color: Color = Color.ZERO
+	var target_color: Color = Color(0.0, 0.0, 0.0, 0.0)
 	target_color[layer] = 1.0
 	var changed: bool = false
 	for z in range(bounds.position.y, bounds.end.y):
