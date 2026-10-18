@@ -1,0 +1,45 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://examples/terrain_lab/terrain_lab.gd" id="1_lab"]
+[ext_resource type="Script" path="res://addons/terrainy/src/terrain/terrainy.gd" id="2_generator"]
+[ext_resource type="Resource" path="res://examples/terrain_lab/profiles/gentle_hills.tres" id="3_profile"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_day"]
+sky_top_color = Color(0.28, 0.44, 0.69, 1)
+sky_horizon_color = Color(0.73, 0.81, 0.89, 1)
+ground_bottom_color = Color(0.20, 0.25, 0.22, 1)
+
+[sub_resource type="Sky" id="Sky_day"]
+sky_material = SubResource("ProceduralSkyMaterial_day")
+
+[sub_resource type="Environment" id="Environment_day"]
+background_mode = 2
+sky = SubResource("Sky_day")
+ambient_light_source = 2
+reflected_light_source = 2
+
+[node name="TerrainLab" type="Node3D"]
+script = ExtResource("1_lab")
+generator = NodePath("Terrainy")
+editable_terrain = NodePath("EditableTerrain")
+terrain_profile = ExtResource("3_profile")
+
+[node name="Terrainy" type="Node" parent="."]
+script = ExtResource("2_generator")
+
+[node name="EditableTerrain" type="MeshInstance3D" parent="."]
+groups = ["terrains"]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-54, -34, 0)
+light_energy = 1.25
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_day")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 145, 240)
+rotation_degrees = Vector3(-30, 0, 0)
+fov = 72.0
+current = true
