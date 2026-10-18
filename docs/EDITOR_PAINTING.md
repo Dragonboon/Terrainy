@@ -34,6 +34,37 @@ require collision raycasts. The outline follows the actual edited surface, not
 a flat screen-space circle.
 Stroke edits are Undo/Redo actions.
 
+## Surface textures versus brush masks
+
+These are separate inputs:
+
+- **Surface textures** define what the four terrain material channels look
+  like. In **Paint → Surface textures**, assign any project-imported
+  `Texture2D` to Base, Grass, Rock or Soil. Bundled Dirt textures are the
+  default examples. You can change them without regenerating the heightfield.
+- **Brush presets / Brush Texture2D** affect only the *shape and opacity*
+  of the painting footprint, not the material being painted.
+
+Assigning a surface texture creates a separate ShaderMaterial and ArrayMesh
+for that terrain; shared profile materials and other grids are not modified.
+The change is registered in Undo/Redo and saved to its external mesh resource.
+For custom shaders, use a material that implements the Terrainy four-layer
+shader uniforms; arbitrary shader parameter layouts are not supported.
+
+### Dual-material organic brush
+
+Select a **primary** material with the usual Paint layer selector. Set
+**Secondary** to another channel (or **Off**), **Mix** to its approximate
+proportion, and **Variation** to control the amount of irregular local mixing.
+The paint stroke writes both RGBA material weights in the same vertex pass,
+with one Undo/Redo action and no extra mesh upload.
+
+For example: primary Grass + secondary Rock at Mix 0.30 and Variation 0.45
+creates stone patches in grassy terrain. Variation is a deterministic smooth
+spatial mask; it does not flicker while the brush is held in place. A low mesh
+vertex resolution will limit the smallest visible patches. This mechanism
+does not add more than four simultaneous material texture slots.
+
 ## Sculpt
 Activate Sculpt, choose Raise, Lower, Smooth or Flatten, set radius and strength
 and left-drag over a generated mesh. Height changes are applied to a copy of

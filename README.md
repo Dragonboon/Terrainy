@@ -21,7 +21,7 @@ Terrainy is a small, editor-first plugin for **Godot 4.7**. It focuses on genera
 - **Reusable generation profiles:** Soft Hills, Highlands, Mountains, Island and Dunes, with deterministic noise, optional secondary detail, smoothing and slope limits.
 - **Six viewport modes:** Cursor, Generate, Paint, Collision, Sculpt and Grid. The compact toolbar sits in the 3D editor; options appear in a contextual row below it.
 - **Organic Sculpt:** Raise, Lower, Smooth and Flatten with brush presets, custom Texture2D stamps, terrain-following brush preview and per-stroke Undo/Redo.
-- **Material painting:** four RGBA layers blended with automatically generated height/slope biomes; triplanar texture projection and low-frequency variation reduce repetitive tiling.
+- **Material painting:** four customizable Texture2D material slots and optional dual-material organic strokes blended with automatic height/slope biomes; triplanar texture projection and low-frequency variation reduce repetitive tiling.
 - **Efficient static collision:** separate lower-resolution terrain collider, regenerated when geometry changes rather than on every paint movement.
 - **Procedural tile grids:** preview, apply or cancel finite deterministic layouts (Continuous, Archipelago, Valley, Ridgeline), with up to 16 editable tiles and shared sampled boundaries.
 - **Seam-aware editing:** compatible Grid siblings share edge heights and normals during Sculpt, with one Undo/Redo action for the affected tiles.
@@ -54,7 +54,7 @@ The five bundled profiles, shader materials and brush masks live inside the addo
 1. In **Generate**, choose **Soft Hills** (or another preset), click **+ Mesh** once and then **Generate**.
 2. Inspect the terrain in the 3D viewport. Use **Edit Profile** to change the underlying Resource, then generate again when ready.
 3. Select the generated `MeshInstance3D`, switch to **Sculpt**, and use Raise/Lower/Smooth/Flatten. Choose a supplied brush stamp or assign any `Texture2D`.
-4. Switch to **Paint** to apply Base, Grass, Rock or Soil weights over the automatic biome material.
+4. Switch to **Paint** to assign your own Base, Grass, Rock and Soil textures, then paint one material or combine two channels using Secondary/Mix/Variation over the automatic biome.
 5. Open **Collision** to enable physics, choose a collision resolution and explicitly rebuild if needed.
 6. **Save the scene**, including the referenced `terrainy_generated/` resources.
 

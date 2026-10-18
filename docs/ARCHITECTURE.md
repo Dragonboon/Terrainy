@@ -58,7 +58,11 @@ manual influence of a stroke over automatic height/slope biomes.
   backup before experimenting with a new seed on a manually edited terrain.
 - The editor Grid is limited to 16 tiles/384 samples per full grid axis and
   requires a noise Resource. Each independent patch uses a regular grid.
-- Painting only changes the visual material weights; it does not rebuild
+- Painting can replace a mesh-local surface texture, or blend up to two of four
+  existing vertex-color channels in one bounded pass. Brush masks are separate
+  from surface textures. Surface material changes are isolated from shared
+  profile resources.
+- Painting material weights only changes the visual material; it does not rebuild
   physics. Sculpt updates physics at the end of a stroke.
 - Compatible equal-resolution Grid siblings can synchronize their shared
   sculpted borders. Arbitrary adjacent MeshInstance3D nodes do not inherit
