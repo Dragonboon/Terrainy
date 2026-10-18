@@ -27,8 +27,11 @@ Select the generated mesh, activate Paint, choose a material layer, brush
 radius and strength. A **Brush presets** dropdown loads existing Terrainy
 stamp textures: Soft circle, Hard circle, Hill, Mountain and Acrylic.
 The adjacent Texture2D picker remains available for any imported stamp image.
-The overlay shows a screen-space cursor ring and active mode label; its ring
-is a visual tool indicator and **not** yet a calibrated world-scale footprint.
+The overlay now projects the brush onto the actual triangulated heightfield: a
+world-scale perimeter, half-radius falloff ring, spokes and operation label.
+It hides when the cursor does not intersect the selected terrain and does not
+require collision raycasts. The outline follows the actual edited surface, not
+a flat screen-space circle.
 Stroke edits are Undo/Redo actions.
 
 ## Sculpt
@@ -55,3 +58,10 @@ existing TerrainConfiguration resource compatibility. New editor features still
 require interactive Godot 4.7 verification: parsing, toolbar layout, actual
 mode switching, changing stamp presets, texture height bands, sculpting,
 Undo/Redo, save/reopen and collider alignment. Do not treat unrun checks as green.
+
+## Sculpt cursor verification
+After selecting the mesh and Sculpt, move the pointer across hills and edges.
+The orange outline must conform to the terrain and clip at patch boundaries.
+Radius is measured in terrain local XZ metres; non-uniform scaling can change
+the apparent world radius. If the selected mesh lacks the editor-generated
+height grid, the toolbar explains that it must be regenerated first.
