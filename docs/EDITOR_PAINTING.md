@@ -91,3 +91,18 @@ Undo/Redo action; collision is rebuilt at stroke completion.
 
 Paint and Sculpt both expose the same five bundled brush presets and a custom
 Texture2D selector, and share the chosen brush shape.
+
+## Organic sculpting by default
+
+Raise and Lower use quintic smootherstep brush falloff, light crown rounding,
+and a local slope ceiling (38° by default), protecting pre-existing steep
+features. The organic correction runs only in the affected grid rectangle and
+does not require a separate Smooth pass. Smooth and Flatten remain available
+for deliberate artistic changes. The imported brush mask still modulates the
+footprint. Repeated stamps keep their natural transition rather than forcing
+a sharp cone at the center.
+
+The result depends on grid density and the chosen brush mask. Very small radii
+relative to vertex spacing cannot produce detailed smooth curves. No new GUI
+options are needed for this default behavior. Test edits on steep terrain,
+patch edges and after many held stamps; confirm collision and Undo/Redo.
