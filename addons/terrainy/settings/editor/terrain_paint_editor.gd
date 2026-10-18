@@ -120,16 +120,32 @@ func _finish_stroke() -> void:
 	stroke_active = false
 	if is_instance_valid(target) and stroke_mesh != stroke_origin and stroke_mesh != null:
 		var undo := plugin.get_undo_redo()
+		var resolution := int(target.get_meta(&"terrainy_height_resolution", 0))
+		var old_heights := PackedFloat32Array()
+		var new_heights := PackedFloat32Array()
+		var old_collision: Shape3D
+		var new_collision: Shape3D
+		var collision_node := target.get_node_or_null("TerrainyCollider/Shape") as CollisionShape3D
+		if sculpt_enabled and resolution > 0:
+			old_heights = Sculpt.extract_heights(stroke_origin, resolution)
+			new_heights = Sculpt.extract_heights(stroke_mesh, resolution)
+			if collision_node != null:
+				old_collision = collision_node.shape
+			target.set_meta(&"terrainy_height_samples", new_heights)
+			if sculpt_finished.is_valid():
+				sculpt_finished.call(target)
+			if collision_node != null:
+				new_collision = collision_node.shape
 		undo.create_action("Sculpt Terrainy Height" if sculpt_enabled else "Paint Terrainy Layer")
 		undo.add_do_property(target, "mesh", stroke_mesh)
 		undo.add_undo_property(target, "mesh", stroke_origin)
+		if sculpt_enabled and resolution > 0:
+			undo.add_do_method(target.set_meta.bind(&"terrainy_height_samples", new_heights))
+			undo.add_undo_method(target.set_meta.bind(&"terrainy_height_samples", old_heights))
+			if collision_node != null:
+				undo.add_do_property(collision_node, "shape", new_collision)
+				undo.add_undo_property(collision_node, "shape", old_collision)
 		undo.commit_action()
-		if sculpt_enabled:
-			var resolution := int(target.get_meta(&"terrainy_height_resolution", 0))
-			if resolution > 0:
-				target.set_meta(&"terrainy_height_samples", Sculpt.extract_heights(stroke_mesh, resolution))
-				if sculpt_finished.is_valid():
-					sculpt_finished.call(target)
 	stroke_origin = null
 	stroke_mesh = null
 	last_local_point = Vector3(INF, INF, INF)
