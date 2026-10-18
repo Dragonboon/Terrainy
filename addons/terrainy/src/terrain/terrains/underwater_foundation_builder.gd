@@ -43,7 +43,7 @@ static func build(
 	var material: Material = config.underwater_material
 	if material == null:
 		var fallback := StandardMaterial3D.new()
-		fallback.albedo_color = Color(0.35, 0.39, 0.38)
+		fallback.albedo_color = Color(0.68, 0.68, 0.64)
 		fallback.roughness = 1.0
 		fallback.metallic = 0.0
 		fallback.albedo_texture = load("res://addons/terrainy/shaders/Dirt_13-256x256.png") as Texture2D
@@ -102,9 +102,27 @@ static func _rings(
 			var px: float = -width * 0.5 + width * float(sample.x) / float(nx - 1)
 			var pz: float = -depth * 0.5 + depth * float(sample.y) / float(nz - 1)
 			var surface: float = heights[sample.y * nx + sample.x]
-			var detail: float = noise.get_noise_2d(px, pz) * config.underwater_roughness * config.underwater_depth * variation_falloff
+			# Do not extrude the rectangular terrain into another square.
+			# The first ring MUST remain identical to the source edge, while
+			# subsequent rings gradually morph the square to a rounded,
+			# angularly varied volcanic shoulder.
+			var normalized_x: float = px / (width * 0.5)
+			var normalized_z: float = pz / (depth * 0.5)
+			var disk_x: float = normalized_x * sqrt(maxf(0.0, 1.0 - normalized_z * normalized_z * 0.5))
+			var disk_z: float = normalized_z * sqrt(maxf(0.0, 1.0 - normalized_x * normalized_x * 0.5))
+			var roundness: float = t * t * (3.0 - 2.0 * t)
+			var mapped_x: float = lerpf(normalized_x, disk_x, roundness)
+			var mapped_z: float = lerpf(normalized_z, disk_z, roundness)
+			var angle: float = atan2(mapped_z, mapped_x)
+			var phase: float = float(noise.seed % 3001) * 0.017
+			# Low-order harmonics vary each cardinal coast; no per-vertex
+			# random jitter or visible sawtooth at the seam.
+			var angular: float = sin(3.0 * angle + phase) * 0.55 + sin(5.0 * angle - phase * 0.73) * 0.30 + cos(7.0 * angle + phase * 0.42) * 0.15
+			var coast_noise: float = noise.get_noise_2d(px * 0.7 + 437.0, pz * 0.7 - 229.0)
+			var asymmetry: float = 1.0 + roundness * (angular * 0.14 + coast_noise * 0.065)
+			var detail: float = coast_noise * config.underwater_roughness * config.underwater_depth * variation_falloff
 			var y: float = lerpf(surface, seabed, eased) + detail
-			vertices[index] = Vector3(px * (1.0 + outward), y, pz * (1.0 + outward))
+			vertices[index] = Vector3(mapped_x * width * 0.5 * (1.0 + outward) * asymmetry, y, mapped_z * depth * 0.5 * (1.0 + outward) * asymmetry)
 			uvs[index] = Vector2(float(j) / float(count), t)
 			if ring < rings:
 				var nxt: int = (j + 1) % count
