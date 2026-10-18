@@ -126,13 +126,20 @@ func _brush_rect(center: Vector3, radius: float) -> Rect2i:
 	return Rect2i(left, top, maxi(x0, x1) - left + 1, maxi(z0, z1) - top + 1)
 
 
-func _weight(point: Vector3, center: Vector3, radius: float, stamp: Image) -> float:
+func _weight(point: Vector3, center: Vector3, radius: float, stamp: Image, organic: bool = false) -> float:
 	var dx: float = point.x - center.x
 	var dz: float = point.z - center.z
 	var distance: float = sqrt(dx * dx + dz * dz)
 	if distance >= radius:
 		return 0.0
-	var weight: float = pow(1.0 - distance / radius, 2.0)
+	var normalized: float = distance / radius
+	var weight: float = pow(1.0 - normalized, 2.0)
+	if organic:
+		# Quintic smootherstep: zero slope and curvature at center and edge.
+		# Prevents repeated Raise/Lower stamps from forming a conical cusp.
+		var t2: float = normalized * normalized
+		var t3: float = t2 * normalized
+		weight = 1.0 - t3 * (normalized * (normalized * 6.0 - 15.0) + 10.0)
 	if stamp != null and not stamp.is_empty():
 		var u: float = clampf(dx / (2.0 * radius) + 0.5, 0.0, 1.0)
 		var v: float = clampf(dz / (2.0 * radius) + 0.5, 0.0, 1.0)
@@ -166,26 +173,29 @@ func paint(center: Vector3, radius: float, strength: float, layer: int, stamp: I
 	return changed
 
 
+## Natural shaping is always enabled: soft radial falloff, local rounding,
+## and a slope ceiling relative to the pre-stamp grid. Existing steep terrain
+## is not flattened merely because the brush passes over it.
 func sculpt(
 	center: Vector3, radius: float, strength: float,
-	operation: int, flatten_height: float, stamp: Image
+	operation: int, flatten_height: float, stamp: Image,
+	max_slope_degrees: float = 38.0
 ) -> bool:
 	if not valid or radius <= 0.0:
 		return false
 	var bounds: Rect2i = _brush_rect(center, radius)
-	# Limit the smoothing snapshot to the rectangle and a one-vertex margin.
-	var source: Dictionary = {}
-	if operation == 2:
-		for z in range(maxi(0, bounds.position.y - 1), mini(stride, bounds.end.y + 1)):
-			for x in range(maxi(0, bounds.position.x - 1), mini(stride, bounds.end.x + 1)):
-				var i: int = z * stride + x
-				source[i] = vertices[i].y
+	var original: Dictionary = {}
+	# A one-cell halo preserves reference heights and supports local filters.
+	for z in range(maxi(0, bounds.position.y - 1), mini(stride, bounds.end.y + 1)):
+		for x in range(maxi(0, bounds.position.x - 1), mini(stride, bounds.end.x + 1)):
+			var i: int = z * stride + x
+			original[i] = vertices[i].y
 	var changed: bool = false
 	for z in range(bounds.position.y, bounds.end.y):
 		for x in range(bounds.position.x, bounds.end.x):
 			var index: int = z * stride + x
 			var point: Vector3 = vertices[index]
-			var weight: float = _weight(point, center, radius, stamp)
+			var weight: float = _weight(point, center, radius, stamp, true)
 			if weight <= 0.00001:
 				continue
 			match operation:
@@ -194,13 +204,14 @@ func sculpt(
 				1:
 					point.y -= strength * weight
 				2:
-					var mean_height: float = source.get(index, point.y)
+					var mean_height: float = float(original.get(index, point.y))
 					var count: int = 1
 					for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 						var nx: int = x + offset.x
 						var nz: int = z + offset.y
 						if nx >= 0 and nx < stride and nz >= 0 and nz < stride:
-							mean_height += float(source.get(nz * stride + nx, vertices[nz * stride + nx].y))
+							var neighbor: int = nz * stride + nx
+							mean_height += float(original.get(neighbor, vertices[neighbor].y))
 							count += 1
 					point.y = lerpf(point.y, mean_height / float(count), clampf(strength * weight * 0.15, 0.0, 1.0))
 				3:
@@ -208,10 +219,88 @@ func sculpt(
 			if not is_equal_approx(point.y, vertices[index].y):
 				vertices[index] = point
 				changed = true
-	if changed:
-		_update_normals(bounds)
-		dirty = true
-	return changed
+	if not changed:
+		return false
+	if operation == 0 or operation == 1:
+		_round_relief(bounds, center, radius, stamp, original, operation)
+	_limit_new_slopes(bounds, original, operation, max_slope_degrees)
+	_update_normals(bounds)
+	dirty = true
+	return true
+
+
+func _round_relief(
+	bounds: Rect2i, center: Vector3, radius: float,
+	stamp: Image, original: Dictionary, operation: int
+) -> void:
+	# A light, bounded neighborhood filter rounds the crown of raised/lowered
+	# relief without erasing existing details outside the brush footprint.
+	var after_stamp: Dictionary = {}
+	for z in range(maxi(0, bounds.position.y - 1), mini(stride, bounds.end.y + 1)):
+		for x in range(maxi(0, bounds.position.x - 1), mini(stride, bounds.end.x + 1)):
+			var i: int = z * stride + x
+			after_stamp[i] = vertices[i].y
+	for z in range(bounds.position.y, bounds.end.y):
+		for x in range(bounds.position.x, bounds.end.x):
+			var i: int = z * stride + x
+			var point: Vector3 = vertices[i]
+			var influence: float = _weight(point, center, radius, stamp, true)
+			if influence <= 0.00001:
+				continue
+			var mean_height: float = float(after_stamp[i])
+			var count: int = 1
+			for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+				var nx: int = x + offset.x
+				var nz: int = z + offset.y
+				if nx >= 0 and nx < stride and nz >= 0 and nz < stride:
+					mean_height += float(after_stamp[nz * stride + nx])
+					count += 1
+			var rounded: float = lerpf(point.y, mean_height / float(count), 0.32 * influence)
+			var previous: float = float(original[i])
+			point.y = maxf(previous, rounded) if operation == 0 else minf(previous, rounded)
+			vertices[i] = point
+
+
+func _limit_new_slopes(
+	bounds: Rect2i, original: Dictionary, operation: int, slope_degrees: float
+) -> void:
+	# On each stamp, constrain additional steepness, but permit slopes that
+	# already existed in the original terrain. Reversed sweeps propagate limits
+	# from the outside of the brush towards the center without global passes.
+	var slope: float = tan(deg_to_rad(clampf(slope_degrees, 5.0, 75.0)))
+	for sweep in range(4):
+		for zi in range(bounds.size.y):
+			var z: int = bounds.position.y + (zi if sweep % 2 == 0 else bounds.size.y - 1 - zi)
+			for xi in range(bounds.size.x):
+				var x: int = bounds.position.x + (xi if sweep % 2 == 0 else bounds.size.x - 1 - xi)
+				var i: int = z * stride + x
+				var previous: float = float(original.get(i, vertices[i].y))
+				var min_height: float = -INF
+				var max_height: float = INF
+				for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var nx: int = x + offset.x
+					var nz: int = z + offset.y
+					if nx < 0 or nx >= stride or nz < 0 or nz >= stride:
+						continue
+					var j: int = nz * stride + nx
+					var base_neighbor: float = float(original.get(j, vertices[j].y))
+					var grid_step: float = absf(step_x) if offset.x != 0 else absf(step_z)
+					var permitted: float = maxf(slope * grid_step, absf(previous - base_neighbor))
+					min_height = maxf(min_height, vertices[j].y - permitted)
+					max_height = minf(max_height, vertices[j].y + permitted)
+				var candidate: float = vertices[i].y
+				if operation == 0:
+					candidate = minf(candidate, maxf(previous, max_height))
+					candidate = maxf(previous, candidate)
+				elif operation == 1:
+					candidate = maxf(candidate, minf(previous, min_height))
+					candidate = minf(previous, candidate)
+				elif min_height <= max_height:
+					candidate = clampf(candidate, min_height, max_height)
+				if not is_equal_approx(candidate, vertices[i].y):
+					var p: Vector3 = vertices[i]
+					p.y = candidate
+					vertices[i] = p
 
 
 func _update_normals(bounds: Rect2i) -> void:
