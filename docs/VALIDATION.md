@@ -15,6 +15,7 @@ is required to register global script classes and prepare texture resources.
 | Editor import | Script loading, plugin initialization and asset import |
 | `terrain_grid_checks.gd` | Seed determinism, generated edge heights/normals, tile-count limit |
 | `terrain_grid_sculpt_checks.gd` | Sculpt propagation across a shared edge |
+| `terrain_dual_paint_checks.gd` | Two-material RGBA brush, deterministic variation, single-mesh resource isolation and custom texture slots |
 | `terrain_edit_regression_checks.gd` | All four sculpt modes, four-way corners and all internal seams; renamed/transformed grids; exclusion of misaligned/rotated tiles; no-op distant strokes; immutable prepared profiles |
 | Same regression suite | 250 deterministic ray segments compared with exhaustive triangle intersections; vertical rays and finite-segment rejection; picking sibling tiles |
 | Same regression suite | Paint/UV2 retention through sculpt, original mesh identity, full-resolution collider height alignment, binary mesh/collider reload, external scene references, mesh Undo/Redo |
