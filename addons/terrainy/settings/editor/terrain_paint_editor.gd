@@ -4,6 +4,7 @@ extends RefCounted
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
 const EditSession = preload("res://addons/terrainy/src/terrain/brush/terrain_edit_session.gd")
 const GridSession = preload("res://addons/terrainy/src/terrain/brush/terrain_grid_sculpt_session.gd")
+const StrokeSampler = preload("res://addons/terrainy/src/terrain/brush/terrain_stroke_sampler.gd")
 
 var plugin: EditorPlugin
 var target: MeshInstance3D
@@ -34,6 +35,7 @@ const PREVIEW_INTERVAL_MS: int = 120
 var stroke_active := false
 var last_local_point := Vector3(INF, INF, INF)
 var last_mouse_point := Vector2(INF, INF)
+var _stroke_carry: float = 0.0
 var _last_stamp_ms: int = 0
 const STAMP_INTERVAL_MS: int = 90
 
@@ -102,7 +104,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# Allow viewport camera navigation with Alt, rather than hijacking editor controls.
-			if event.alt_pressed:
+			if event.alt_pressed or event.ctrl_pressed or event.meta_pressed or event.shift_pressed:
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
 			var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
 			if hit.is_empty():
@@ -121,6 +123,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			_last_stamp_ms = Time.get_ticks_msec()
 			flatten_height = hit.position.y
 			last_local_point = Vector3(INF, INF, INF)
+			_stroke_carry = 0.0
 			last_mouse_point = event.position
 			_apply(hit.position)
 			return EditorPlugin.AFTER_GUI_INPUT_STOP
@@ -128,13 +131,15 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			_finish_stroke()
 			return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if event is InputEventMouseMotion and stroke_active:
-		# Never rescan all triangles for tiny pointer jitter.
-		if last_mouse_point.distance_squared_to(event.position) < 16.0:
-			return EditorPlugin.AFTER_GUI_INPUT_STOP
+		# Keep Godot camera/navigation gestures free, and sample the entire
+		# traveled path rather than dropping events or stamping only endpoints.
+		if event.alt_pressed or event.ctrl_pressed or event.meta_pressed:
+			_finish_stroke()
+			return EditorPlugin.AFTER_GUI_INPUT_PASS
 		last_mouse_point = event.position
-		var hit := {"position": hover_position} if hover_valid else _hit(camera, event.position)
+		var hit: Dictionary = _hit(camera, event.position)
 		if not hit.is_empty():
-			_apply(hit.position)
+			_apply_path(hit["position"])
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
 
@@ -154,13 +159,20 @@ func _hit(camera: Camera3D, position: Vector2) -> Dictionary:
 	return _hover_session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
 
 
+func _apply_path(local_position: Vector3) -> void:
+	if last_local_point.x == INF:
+		_apply(local_position, true)
+		return
+	var result: Dictionary = StrokeSampler.segment(last_local_point, local_position, radius, _stroke_carry)
+	_stroke_carry = float(result["carry"])
+	# Track the physical cursor separately from the last stamped position.
+	last_local_point = local_position
+	for point: Vector3 in result["points"]:
+		_apply(point, true)
+
+
 func _apply(local_position: Vector3, force: bool = false) -> void:
 	if _session == null:
-		return
-	if not force and last_local_point.x != INF and Vector2(
-		last_local_point.x - local_position.x,
-		last_local_point.z - local_position.z
-	).length() < maxf(0.1, radius * 0.12):
 		return
 	last_local_point = local_position
 	var changed: bool = false
@@ -260,4 +272,5 @@ func _finish_stroke() -> void:
 	_hover_session = null
 	_hover_mesh = null
 	last_local_point = Vector3(INF, INF, INF)
+	_stroke_carry = 0.0
 	last_mouse_point = Vector2(INF, INF)
