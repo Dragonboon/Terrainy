@@ -6,11 +6,12 @@ extends RefCounted
 const Builder = preload("res://addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
 const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
+const Procedural = preload("res://addons/terrainy/settings/editor/terrainy_procedural_tools.gd")
 const PRESET_ROOT := "res://addons/terrainy/presets/"
 const PRESETS := ["Soft hills", "Highlands", "Mountains", "Island", "Dunes"]
 const PATHS := ["soft_hills.tres", "highlands.tres", "mountains.tres", "island.tres", "dunes.tres"]
 
-enum Tool { SELECT, GENERATE, PAINT, COLLISION, SCULPT }
+enum Tool { SELECT, GENERATE, PAINT, COLLISION, SCULPT, PROCEDURAL }
 
 var plugin: EditorPlugin
 var painter: RefCounted
@@ -42,11 +43,15 @@ var status: Label
 var generate_button: Button
 var _busy := false
 var _switching_selection := false
+var procedural: RefCounted
 
 
 func setup(editor_plugin: EditorPlugin, paint_controller: RefCounted) -> void:
 	plugin = editor_plugin
 	painter = paint_controller
+	procedural = Procedural.new()
+	procedural.setup(plugin)
+	procedural.status_callback = Callable(self, "_status")
 	painter.sculpt_finished = Callable(self, "refresh_after_sculpt")
 	_create_palette()
 	_create_context()
@@ -57,6 +62,7 @@ func setup(editor_plugin: EditorPlugin, paint_controller: RefCounted) -> void:
 
 
 func cleanup() -> void:
+	procedural.cleanup()
 	painter.set_active(false)
 	plugin.remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_BOTTOM, context)
 	plugin.remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_SIDE_LEFT, palette)
@@ -71,6 +77,7 @@ func is_paint_mode() -> bool:
 func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 	if not is_instance_valid(value):
 		generator = null
+		procedural.set_context(null, null)
 		selected_mesh = null
 		palette.hide()
 		context.hide()
@@ -91,6 +98,7 @@ func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 	elif current_profile == null and not targets.is_empty() and generator.terrains.has(targets[0]):
 		current_profile = generator.terrains[targets[0]]
 		profile_select.select(PRESETS.size())
+	procedural.set_context(generator, current_profile)
 	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 
@@ -111,6 +119,7 @@ func _create_palette() -> void:
 		["Paint", "Paint", "Paint one of four surface layers"],
 		["Collision", "CollisionShape3D", "Generate or adjust terrain collision"],
 		["Sculpt", "Curve3D", "Raise, lower, smooth or flatten terrain heights"],
+		["Grid", "Grid", "Preview and create several seamless terrain tiles"],
 	]:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(48, 48)
@@ -243,6 +252,27 @@ func _create_context() -> void:
 	_add_label(sculpt_row, "Collision updates after stroke")
 	context.add_child(sculpt_row)
 	tool_rows.append(sculpt_row)
+	var grid_row := HFlowContainer.new()
+	grid_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_add_label(grid_row, "Grid")
+	var grid_cols := _spin(grid_row, 1, 4, 1, 2, " cols")
+	grid_cols.value_changed.connect(func(v: float): procedural.columns = int(v))
+	var grid_rows := _spin(grid_row, 1, 4, 1, 2, " rows")
+	grid_rows.value_changed.connect(func(v: float): procedural.rows = int(v))
+	_add_label(grid_row, "Seed")
+	var grid_seed := _spin(grid_row, 0, 999999, 1, 2026, "")
+	grid_seed.value_changed.connect(func(v: float): procedural.seed = int(v))
+	var layout_select := OptionButton.new()
+	for label in ["Continuous", "Archipelago", "Valley", "Ridgeline"]:
+		layout_select.add_item(label)
+	layout_select.item_selected.connect(func(i: int): procedural.layout = i)
+	grid_row.add_child(layout_select)
+	_add_button(grid_row, "Preview", "Temporary 16-cell tiles without physics", func(): procedural.preview())
+	_add_button(grid_row, "Apply Grid", "Create a separate editable grid; existing terrain is kept", func(): procedural.apply())
+	_add_button(grid_row, "Cancel", "Stop generating further tiles", func(): procedural.cancel())
+	_add_button(grid_row, "Clear Preview", "Remove temporary preview only", func(): procedural.clear_preview())
+	context.add_child(grid_row)
+	tool_rows.append(grid_row)
 	var info_row := HBoxContainer.new()
 	info_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	context.add_child(info_row)
@@ -270,7 +300,7 @@ func _set_tool(mode: int) -> void:
 		_activate_paint_target()
 	else:
 		painter.set_active(false)
-	_status(["Select a tool", "Choose a preset and generate", "Left-drag paints selected mesh", "Set physics resolution then rebuild", "Left-drag sculpts terrain height"][tool])
+	_status(["Select a tool", "Choose a preset and generate", "Left-drag paints selected mesh", "Set physics resolution then rebuild", "Left-drag sculpts terrain height", "Preview or generate a reproducible tile grid"][tool])
 
 
 func _activate_paint_target() -> void:
@@ -300,6 +330,7 @@ func _choose_profile(index: int) -> void:
 		var mesh := _target()
 		if mesh != null and generator.terrains.has(mesh):
 			current_profile = generator.terrains[mesh]
+	procedural.set_context(generator, current_profile)
 	_status("Profile selected. Generate when ready.")
 
 
