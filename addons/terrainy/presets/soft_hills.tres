@@ -3,6 +3,12 @@
 [ext_resource type="Script" path="res://addons/terrainy/src/terrain/configurations/terrain_noise_configuration.gd" id="1_script"]
 [ext_resource type="Shader" path="res://addons/terrainy/shaders/terrain/editor_four_layers.gdshader" id="2_shader"]
 
+[ext_resource type="Texture2D" path="res://addons/terrainy/shaders/Dirt_07-256x256.png" id="4_base"]
+[ext_resource type="Texture2D" path="res://addons/terrainy/shaders/Dirt_10-256x256.png" id="5_grass"]
+[ext_resource type="Texture2D" path="res://addons/terrainy/shaders/Dirt_13-256x256.png" id="6_rock"]
+[ext_resource type="Texture2D" path="res://addons/terrainy/shaders/Dirt_20-256x256.png" id="7_soil"]
+[ext_resource type="Texture2D" path="res://addons/terrainy/assets/noise_textures/Perlin/Perlin_01-256x256.png" id="8_var"]
+
 [sub_resource type="FastNoiseLite" id="MainNoise"]
 seed = 17018
 frequency = 0.005
@@ -20,6 +26,17 @@ fractal_octaves = 2
 
 [sub_resource type="ShaderMaterial" id="TerrainColor"]
 shader = ExtResource("2_shader")
+shader_parameter/base_texture = ExtResource("4_base")
+shader_parameter/grass_texture = ExtResource("5_grass")
+shader_parameter/rock_texture = ExtResource("6_rock")
+shader_parameter/soil_texture = ExtResource("7_soil")
+shader_parameter/variation_texture = ExtResource("8_var")
+shader_parameter/height_max = 24.0
+shader_parameter/grass_start = 0.1
+shader_parameter/rock_start = 0.67
+shader_parameter/transition_width = 0.12
+shader_parameter/rock_slope = 0.52
+shader_parameter/variation_strength = 0.28
 
 [resource]
 resource_local_to_scene = true
