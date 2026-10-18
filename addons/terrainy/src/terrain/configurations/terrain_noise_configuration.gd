@@ -22,7 +22,7 @@ class_name TerrainNoiseConfiguration extends TerrainConfiguration
 @export var generate_underwater_foundation: bool = false
 @export var underwater_collision: bool = false
 @export_range(-100.0, 100.0, 0.5) var underwater_sea_level: float = 0.0
-@export_range(4.0, 300.0, 1.0) var underwater_depth: float = 45.0
-@export_range(0.0, 3.0, 0.05) var underwater_base_spread: float = 0.55
-@export_range(0.0, 0.15, 0.005) var underwater_roughness: float = 0.02
+@export_range(4.0, 300.0, 1.0) var underwater_depth: float = 14.0
+@export_range(0.0, 3.0, 0.05) var underwater_base_spread: float = 0.16
+@export_range(0.0, 0.15, 0.005) var underwater_roughness: float = 0.004
 @export var underwater_material: Material

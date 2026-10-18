@@ -58,8 +58,8 @@ max_slope_degrees = 30.0
 use_fall_off = true
 falloff_texture = ExtResource("3_falloff")
 
-generate_underwater_foundation = true
+generate_underwater_foundation = false
 underwater_sea_level = 0.0
-underwater_depth = 55.0
-underwater_base_spread = 0.65
-underwater_roughness = 0.015
+underwater_depth = 14.0
+underwater_base_spread = 0.16
+underwater_roughness = 0.004

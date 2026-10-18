@@ -4,8 +4,8 @@ extends RefCounted
 ## Build concentric perimeter rings rather than copying the complete heightfield.
 ## No runtime processing or high-frequency mirrored height noise.
 
-const VISUAL_RINGS: int = 12
-const COLLISION_RINGS: int = 6
+const VISUAL_RINGS: int = 8
+const COLLISION_RINGS: int = 4
 
 
 static func build(

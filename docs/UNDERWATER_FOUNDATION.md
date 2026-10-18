@@ -6,14 +6,14 @@ compatibility, but its repeated noise and full geometry copy were not ideal
 for diving around islands.
 
 The editor-only **Underwater Foundation** is a separate mesh constructed from
-the terrain's perimeter. Twelve progressively expanded rings descend toward
+the terrain's perimeter. Eight compact progressively expanded rings descend toward
 a wide seabed, with smooth profile interpolation and two-octave low-frequency
 deformation. The first ring exactly shares the terrain border; the last ring
 closes with a bottom cap. No interior heightfield duplication is required.
 
 ## Using it
 
-- The bundled **Island** preset enables the feature by default.
+- The bundled **Island** preset keeps this experimental feature **off by default**. Enable Seabed only when a visual undersea foundation is required.
 - The **Generate → Seabed** checkbox turns the effect on or off quickly.
 - Open **Generate → Edit Profile**, then find **Underwater foundation (editor)**
   on its `TerrainNoiseConfiguration` Resource.
@@ -80,3 +80,7 @@ configuration. The randomization does not apply to heightmap-only presets.
 
 The checkbox changes the single-terrain Generate workflow. Grid's existing
 explicit seeded workflow remains independent and deterministic.
+
+## Conservative fallback (current iteration)
+
+The expanded mirror appearance was rejected after editor screenshots showed an overly dark, distorted underwater mass. Island now defaults to **Seabed off**, and the opt-in version uses a shallow 14m base, spread 0.16 and roughness 0.004 instead of a large 55m foundation. Generate New replaces the selected mesh; it does not add new variants as siblings. These defaults are provisional until visual testing in Godot. Existing generated underwater children are removed when regeneration is done with Seabed disabled.
