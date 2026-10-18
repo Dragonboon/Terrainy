@@ -9,10 +9,10 @@ uniform sampler2D rock_texture : source_color, repeat_enable;
 uniform sampler2D soil_texture : source_color, repeat_enable;
 uniform sampler2D variation_texture : repeat_enable;
 
-uniform vec4 base_color : source_color = vec4(0.78, 0.72, 0.55, 1.0);
-uniform vec4 grass_color : source_color = vec4(0.27, 0.51, 0.22, 1.0);
-uniform vec4 rock_color : source_color = vec4(0.48, 0.49, 0.47, 1.0);
-uniform vec4 soil_color : source_color = vec4(0.44, 0.31, 0.21, 1.0);
+uniform vec4 base_color : source_color = vec4(0.93, 0.80, 0.53, 1.0);
+uniform vec4 grass_color : source_color = vec4(0.29, 0.71, 0.23, 1.0);
+uniform vec4 rock_color : source_color = vec4(0.67, 0.71, 0.76, 1.0);
+uniform vec4 soil_color : source_color = vec4(0.52, 0.32, 0.19, 1.0);
 uniform float height_min = 0.0;
 uniform float height_max = 40.0;
 uniform float grass_start : hint_range(0.0, 1.0) = 0.16;
@@ -23,6 +23,7 @@ uniform float triplanar_scale : hint_range(0.005, 0.5) = 0.045;
 uniform float variation_scale : hint_range(0.001, 0.1) = 0.007;
 uniform float variation_strength : hint_range(0.0, 1.0) = 0.24;
 uniform float manual_blend : hint_range(0.0, 1.0) = 1.0;
+uniform bool debug_biomes = false;
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -68,8 +69,21 @@ void fragment() {
 	vec3 green = triplanar(grass_texture, shifted, weights, triplanar_scale) * grass_color.rgb;
 	vec3 stone = triplanar(rock_texture, shifted, weights, triplanar_scale) * rock_color.rgb;
 	vec3 earth = triplanar(soil_texture, shifted, weights, triplanar_scale) * soil_color.rgb;
-	ALBEDO = (base * blend.r + green * blend.g + stone * blend.b + earth * blend.a)
-		* (1.0 + variation * variation_strength);
+	// Source assets are all dirt-like; retain their microdetail but preserve
+	// the much stronger biological hue differences of each biome.
+	vec3 toned_base = mix(base_color.rgb, base * 1.28, 0.32);
+	vec3 toned_grass = mix(grass_color.rgb, green * 1.28, 0.32);
+	vec3 toned_rock = mix(rock_color.rgb, stone * 1.28, 0.32);
+	vec3 toned_soil = mix(soil_color.rgb, earth * 1.28, 0.32);
+	ALBEDO = (toned_base * blend.r + toned_grass * blend.g +
+		toned_rock * blend.b + toned_soil * blend.a) *
+		(1.0 + variation * variation_strength);
+	if (debug_biomes) {
+		ALBEDO = blend.r * vec3(0.98, 0.82, 0.30) +
+			blend.g * vec3(0.13, 0.90, 0.24) +
+			blend.b * vec3(0.21, 0.46, 1.0) +
+			blend.a * vec3(0.92, 0.17, 0.08);
+	}
 	ROUGHNESS = 0.94;
 	SPECULAR = 0.2;
 }

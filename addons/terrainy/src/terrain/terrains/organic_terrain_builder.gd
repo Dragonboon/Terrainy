@@ -63,7 +63,19 @@ static func build(config: TerrainConfiguration) -> Dictionary:
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, config.terrain_material if config.terrain_material != null else TerrainBuilder.DefaultTerrainMaterial)
+	var material: Material = config.terrain_material if config.terrain_material != null else TerrainBuilder.DefaultTerrainMaterial
+	# A per-mesh material keeps the height bands correct without mutating shared presets.
+	if material is ShaderMaterial:
+		var instance := (material as ShaderMaterial).duplicate(true) as ShaderMaterial
+		var lower := INF
+		var upper := -INF
+		for height in heights:
+			lower = minf(lower, height)
+			upper = maxf(upper, height)
+		instance.set_shader_parameter("height_min", lower)
+		instance.set_shader_parameter("height_max", maxf(lower + 0.001, upper))
+		material = instance
+	mesh.surface_set_material(0, material)
 	return {"error": OK, "mesh": mesh, "heights": heights, "resolution": size}
 
 
