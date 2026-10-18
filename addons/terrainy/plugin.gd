@@ -71,7 +71,7 @@ func _sync_selection() -> void:
 			terrain = _find_generator_for(chosen)
 	viewport_tools.set_context(terrain, mesh)
 	paint_editor.edit(mesh)
-	paint_editor.set_active(viewport_tools.is_paint_mode() and mesh != null)
+	paint_editor.set_active((viewport_tools.is_paint_mode() or viewport_tools.tool == 4) and mesh != null)
 
 
 func _find_generator_for(mesh: MeshInstance3D) -> Terrainy:

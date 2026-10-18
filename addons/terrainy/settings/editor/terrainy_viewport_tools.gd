@@ -19,7 +19,7 @@ var current_profile: TerrainConfiguration
 var tool: Tool = Tool.GENERATE
 var buttons: Array[Button] = []
 var palette: VBoxContainer
-var context: HFlowContainer
+var context: VBoxContainer
 var tool_rows: Array[HFlowContainer] = []
 var profile_select: OptionButton
 var target_select: OptionButton
@@ -127,17 +127,20 @@ func _create_palette() -> void:
 
 
 func _create_context() -> void:
-	context = HFlowContainer.new()
+	context = VBoxContainer.new()
 	context.name = "Terrainy Context"
-	context.custom_minimum_size = Vector2(0, 38)
+	context.custom_minimum_size = Vector2(0, 44)
+	context.add_theme_constant_override("separation", 2)
 	context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var select_row := HFlowContainer.new()
+	select_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(select_row, "Terrainy  /  Select")
 	_add_label(select_row, "Choose Generate, Paint or Collision from the left toolbar.")
 	context.add_child(select_row)
 	tool_rows.append(select_row)
 
 	var generation_row := HFlowContainer.new()
+	generation_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(generation_row, "Terrain")
 	profile_select = OptionButton.new()
 	profile_select.custom_minimum_size.x = 125
@@ -159,6 +162,7 @@ func _create_context() -> void:
 	tool_rows.append(generation_row)
 
 	var paint_row := HFlowContainer.new()
+	paint_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(paint_row, "Paint")
 	layer_select = OptionButton.new()
 	layer_select.custom_minimum_size.x = 110
@@ -191,6 +195,7 @@ func _create_context() -> void:
 	tool_rows.append(paint_row)
 
 	var collision_row := HFlowContainer.new()
+	collision_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(collision_row, "Collision")
 	physics_enabled = CheckBox.new()
 	physics_enabled.text = "Enabled"
@@ -206,6 +211,7 @@ func _create_context() -> void:
 	tool_rows.append(collision_row)
 
 	var sculpt_row := HFlowContainer.new()
+	sculpt_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(sculpt_row, "Sculpt")
 	sculpt_mode = OptionButton.new()
 	for name in ["Raise", "Lower", "Smooth", "Flatten"]:
@@ -221,16 +227,19 @@ func _create_context() -> void:
 	_add_label(sculpt_row, "Collision updates after stroke")
 	context.add_child(sculpt_row)
 	tool_rows.append(sculpt_row)
+	var info_row := HBoxContainer.new()
+	info_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	context.add_child(info_row)
 	debug_check = CheckBox.new()
 	debug_check.text = "Biome debug"
 	debug_check.tooltip_text = "Show distinct biome colors to inspect elevation and slope transitions."
 	debug_check.toggled.connect(_toggle_biome_debug)
-	context.add_child(debug_check)
+	info_row.add_child(debug_check)
 	status = Label.new()
 	status.clip_text = true
 	status.custom_minimum_size.x = 120
 	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	context.add_child(status)
+	info_row.add_child(status)
 
 
 func _set_tool(mode: int) -> void:
@@ -302,7 +311,7 @@ func _on_target_changed(_index: int) -> void:
 	if mesh != null and profile_select.selected == PRESETS.size() and generator.terrains.has(mesh):
 		current_profile = generator.terrains[mesh]
 	_sync_physics_ui()
-	if tool == Tool.PAINT:
+	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 
 
