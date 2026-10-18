@@ -169,6 +169,7 @@ func _apply_path(local_position: Vector3) -> void:
 	last_local_point = local_position
 	for point: Vector3 in result["points"]:
 		_apply(point, true)
+	last_local_point = local_position
 
 
 func _apply(local_position: Vector3, force: bool = false) -> void:
