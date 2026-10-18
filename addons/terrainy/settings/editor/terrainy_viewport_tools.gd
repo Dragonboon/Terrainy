@@ -26,7 +26,10 @@ var tool_rows: Array[HFlowContainer] = []
 var profile_select: OptionButton
 var target_select: OptionButton
 var layer_select: OptionButton
-var material_pickers: Array[EditorResourcePicker] = []
+var material_picker: EditorResourcePicker
+var secondary_material_picker: EditorResourcePicker
+var dual_toggle: CheckBox
+var dual_row: HFlowContainer
 var secondary_select: OptionButton
 var secondary_mix_input: SpinBox
 var organic_variation_input: SpinBox
@@ -178,59 +181,91 @@ func _create_context() -> void:
 	context.add_child(generation_row)
 	tool_rows.append(generation_row)
 
+
 	var paint_row := HFlowContainer.new()
 	paint_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_add_label(paint_row, "Paint")
+	_add_label(paint_row, "Paint · Material")
 	layer_select = OptionButton.new()
-	layer_select.custom_minimum_size.x = 110
-	for label in ["Base", "Grass", "Rock", "Soil"]:
-		layer_select.add_item(label)
-	layer_select.item_selected.connect(func(index: int): painter.layer = index)
+	layer_select.custom_minimum_size.x = 150
+	layer_select.tooltip_text = "Choose ONE terrain material to paint. The selected texture is shown beside it."
+	for material_name in ["Base", "Grass", "Rock", "Soil"]:
+		layer_select.add_item(material_name)
+	layer_select.select(0)
+	layer_select.item_selected.connect(_select_primary_material)
 	paint_row.add_child(layer_select)
-	_add_label(paint_row, "Secondary")
-	secondary_select = OptionButton.new()
-	for material_name in ["Off", "Base", "Grass", "Rock", "Soil"]:
-		secondary_select.add_item(material_name)
-	secondary_select.item_selected.connect(func(i: int): painter.secondary_layer = i - 1)
-	paint_row.add_child(secondary_select)
-	_add_label(paint_row, "Mix")
-	secondary_mix_input = _spin(paint_row, 0.0, 1.0, 0.05, 0.35, "")
-	secondary_mix_input.value_changed.connect(func(v: float): painter.secondary_mix = v)
-	_add_label(paint_row, "Variation")
-	organic_variation_input = _spin(paint_row, 0.0, 1.0, 0.05, 0.3, "")
-	organic_variation_input.value_changed.connect(func(v: float): painter.organic_variation = v)
-	_add_label(paint_row, "Surface textures")
-	for slot in range(4):
-		var picker := EditorResourcePicker.new()
-		picker.base_type = "Texture2D"
-		picker.custom_minimum_size.x = 115
-		picker.tooltip_text = ["Base texture", "Grass texture", "Rock texture", "Soil texture"][slot]
-		picker.resource_changed.connect(_change_material_texture.bind(slot))
-		material_pickers.append(picker)
-		paint_row.add_child(picker)
-	_add_label(paint_row, "Radius")
+
+	_add_label(paint_row, "Texture")
+	material_picker = EditorResourcePicker.new()
+	material_picker.base_type = "Texture2D"
+	material_picker.custom_minimum_size.x = 160
+	material_picker.tooltip_text = "Texture for the SELECTED material only. Drag a project Texture2D here or use Quick Load."
+	material_picker.resource_changed.connect(_change_primary_material_texture)
+	paint_row.add_child(material_picker)
+
+	dual_toggle = CheckBox.new()
+	dual_toggle.text = "Mix two materials"
+	dual_toggle.tooltip_text = "Optional: include a second material during this brush stroke."
+	dual_toggle.button_pressed = false
+	dual_toggle.toggled.connect(_toggle_dual_paint)
+	paint_row.add_child(dual_toggle)
+
+	_add_label(paint_row, "Size")
 	radius_input = _spin(paint_row, 0.5, 128.0, 0.5, 12.0, " m")
 	radius_input.value_changed.connect(func(value: float): painter.radius = value)
 	_add_label(paint_row, "Strength")
 	strength_input = _spin(paint_row, 0.01, 1.0, 0.05, 0.35, "")
 	strength_input.value_changed.connect(func(value: float): painter.strength = value)
-	_add_label(paint_row, "Brush")
+
+	_add_label(paint_row, "Brush shape")
+	brush_presets = OptionButton.new()
+	brush_presets.custom_minimum_size.x = 120
+	brush_presets.tooltip_text = "The brush shape changes the footprint, not the selected terrain material."
+	for name in ["Soft circle", "Hard circle", "Hill", "Mountain", "Acrylic", "Custom"]:
+		brush_presets.add_item(name)
+	brush_presets.select(0)
+	brush_presets.item_selected.connect(_select_brush_preset)
+	paint_row.add_child(brush_presets)
+
 	brush_picker = EditorResourcePicker.new()
 	brush_picker.base_type = "Texture2D"
-	brush_picker.custom_minimum_size.x = 128
+	brush_picker.custom_minimum_size.x = 125
+	brush_picker.visible = false
+	brush_picker.tooltip_text = "Custom brush MASK: this does not replace the selected terrain texture."
 	brush_picker.edited_resource = painter.brush_texture
 	brush_picker.resource_changed.connect(_select_custom_brush)
 	paint_row.add_child(brush_picker)
-	_add_label(paint_row, "Drag to paint · Ctrl+Z")
-	brush_presets = OptionButton.new()
-	brush_presets.tooltip_text = "Ready-to-use Terrainy stamps, or select a custom Texture2D."
-	for name in ["Soft circle", "Hard circle", "Hill", "Mountain", "Acrylic", "Custom"]:
-		brush_presets.add_item(name)
-	brush_presets.item_selected.connect(_select_brush_preset)
-	paint_row.add_child(brush_presets)
-	paint_row.move_child(brush_presets, paint_row.get_child_count() - 3)
+
 	context.add_child(paint_row)
 	tool_rows.append(paint_row)
+
+	# The optional second material has its own row. Single-material users
+	# never need to navigate the secondary controls.
+	dual_row = HFlowContainer.new()
+	dual_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dual_row.visible = false
+	_add_label(dual_row, "Second material")
+	secondary_select = OptionButton.new()
+	secondary_select.custom_minimum_size.x = 140
+	for material_name in ["Base", "Grass", "Rock", "Soil"]:
+		secondary_select.add_item(material_name)
+	secondary_select.select(1)
+	secondary_select.item_selected.connect(_select_secondary_material)
+	dual_row.add_child(secondary_select)
+
+	_add_label(dual_row, "Texture")
+	secondary_material_picker = EditorResourcePicker.new()
+	secondary_material_picker.base_type = "Texture2D"
+	secondary_material_picker.custom_minimum_size.x = 150
+	secondary_material_picker.tooltip_text = "Optional second material texture. Uses another of the four existing terrain slots."
+	secondary_material_picker.resource_changed.connect(_change_secondary_material_texture)
+	dual_row.add_child(secondary_material_picker)
+	_add_label(dual_row, "Proportion")
+	secondary_mix_input = _spin(dual_row, 0.0, 100.0, 5.0, 35.0, "%")
+	secondary_mix_input.value_changed.connect(func(value: float): painter.secondary_mix = value / 100.0)
+	_add_label(dual_row, "Organic variation")
+	organic_variation_input = _spin(dual_row, 0.0, 100.0, 5.0, 30.0, "%")
+	organic_variation_input.value_changed.connect(func(value: float): painter.organic_variation = value / 100.0)
+	context.add_child(dual_row)
 
 	var collision_row := HFlowContainer.new()
 	collision_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -327,6 +362,7 @@ func _set_tool(mode: int) -> void:
 		_activate_paint_target()
 	else:
 		painter.set_active(false)
+	_sync_paint_visibility()
 	_status(["Select a tool", "Choose a preset and generate", "Left-drag paints selected mesh", "Set physics resolution then rebuild", "Left-drag sculpts terrain height", "Preview or generate a reproducible tile grid"][tool])
 
 
@@ -567,12 +603,16 @@ func _status(message: String) -> void:
 
 func _select_brush_preset(index: int) -> void:
 	if index == 5:
+		brush_presets.select(5)
+		brush_picker.visible = tool == Tool.PAINT
 		return
 	var names := ["circle2", "circle0", "hill1", "mountain1", "acrylic1"]
 	var texture := load("res://addons/terrainy/src/terrain/brush/textures/transparent/" + names[index] + ".png") as Texture2D
 	if texture != null:
 		painter.set_brush_texture(texture)
 		brush_picker.edited_resource = texture
+		brush_picker.visible = false
+		brush_presets.select(index)
 		if sculpt_brush_picker != null:
 			sculpt_brush_picker.edited_resource = texture
 		if sculpt_brush_presets != null:
@@ -601,26 +641,97 @@ func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
 func _select_custom_brush(resource: Resource) -> void:
 	painter.set_brush_texture(resource as Texture2D)
 	brush_presets.select(5)
+	brush_picker.visible = tool == Tool.PAINT
 	sculpt_brush_presets.select(5)
 	brush_picker.edited_resource = resource
 	sculpt_brush_picker.edited_resource = resource
 
 
+
 const PAINT_TEXTURE_UNIFORMS := ["base_texture", "grass_texture", "rock_texture", "soil_texture"]
+const PAINT_TEXTURE_DEFAULTS := [
+	"res://addons/terrainy/shaders/Dirt_07-256x256.png",
+	"res://addons/terrainy/shaders/Dirt_10-256x256.png",
+	"res://addons/terrainy/shaders/Dirt_13-256x256.png",
+	"res://addons/terrainy/shaders/Dirt_20-256x256.png"
+]
+
+
+func _select_primary_material(index: int) -> void:
+	if index < 0 or index >= PAINT_TEXTURE_UNIFORMS.size():
+		return
+	painter.layer = index
+	if dual_toggle.button_pressed and secondary_select.selected == index:
+		secondary_select.select((index + 1) % PAINT_TEXTURE_UNIFORMS.size())
+		painter.secondary_layer = secondary_select.selected
+	_sync_material_pickers()
+	_status("Painting %s only." % layer_select.get_item_text(index) if not dual_toggle.button_pressed else
+		"Painting %s + %s." % [layer_select.get_item_text(index), secondary_select.get_item_text(secondary_select.selected)])
+
+
+func _toggle_dual_paint(enabled: bool) -> void:
+	if enabled:
+		if secondary_select.selected == painter.layer:
+			secondary_select.select((painter.layer + 1) % PAINT_TEXTURE_UNIFORMS.size())
+		painter.secondary_layer = secondary_select.selected
+	else:
+		painter.secondary_layer = -1
+	_sync_paint_visibility()
+	_sync_material_pickers()
+	_status("Two-material painting enabled." if enabled else "Single-material painting enabled.")
+
+
+func _select_secondary_material(index: int) -> void:
+	if index == painter.layer:
+		index = (index + 1) % PAINT_TEXTURE_UNIFORMS.size()
+		secondary_select.select(index)
+	painter.secondary_layer = index if dual_toggle.button_pressed else -1
+	_sync_material_pickers()
+
+
+func _sync_paint_visibility() -> void:
+	if dual_row != null:
+		dual_row.visible = tool == Tool.PAINT and dual_toggle.button_pressed
+	if brush_picker != null:
+		brush_picker.visible = tool == Tool.PAINT and brush_presets.selected == 5
+
+
+func _surface_material() -> ShaderMaterial:
+	var mesh := _target()
+	if mesh == null or mesh.mesh == null or mesh.mesh.get_surface_count() != 1:
+		return null
+	return mesh.mesh.surface_get_material(0) as ShaderMaterial
 
 
 func _sync_material_pickers() -> void:
-	if material_pickers.is_empty():
+	if material_picker == null or secondary_material_picker == null:
 		return
-	var mesh := _target()
-	var material: ShaderMaterial = null
-	if mesh != null and mesh.mesh != null and mesh.mesh.get_surface_count() > 0:
-		material = mesh.mesh.surface_get_material(0) as ShaderMaterial
-	for i in range(material_pickers.size()):
+	var material := _surface_material()
+	for slot in range(PAINT_TEXTURE_UNIFORMS.size()):
 		var texture: Texture2D = null
 		if material != null:
-			texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[i]) as Texture2D
-		material_pickers[i].edited_resource = texture
+			texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot]) as Texture2D
+		layer_select.set_item_icon(slot, texture)
+		secondary_select.set_item_icon(slot, texture)
+	var primary: int = layer_select.selected
+	if primary >= 0 and primary < PAINT_TEXTURE_UNIFORMS.size() and material != null:
+		material_picker.edited_resource = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[primary]) as Texture2D
+	else:
+		material_picker.edited_resource = null
+	var secondary: int = secondary_select.selected
+	if secondary >= 0 and secondary < PAINT_TEXTURE_UNIFORMS.size() and material != null:
+		secondary_material_picker.edited_resource = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[secondary]) as Texture2D
+	else:
+		secondary_material_picker.edited_resource = null
+
+
+func _change_primary_material_texture(resource: Resource) -> void:
+	_change_material_texture(resource, layer_select.selected)
+
+
+func _change_secondary_material_texture(resource: Resource) -> void:
+	if dual_toggle.button_pressed:
+		_change_material_texture(resource, secondary_select.selected)
 
 
 func _change_material_texture(resource: Resource, slot: int) -> void:
@@ -628,7 +739,8 @@ func _change_material_texture(resource: Resource, slot: int) -> void:
 		return
 	var mesh := _target()
 	if mesh == null or not mesh.mesh is ArrayMesh:
-		_status("Generate a terrain before assigning surface textures.")
+		_status("Generate or select a terrain before assigning a texture.")
+		_sync_material_pickers()
 		return
 	var previous := mesh.mesh as ArrayMesh
 	if previous.get_surface_count() != 1:
@@ -636,10 +748,18 @@ func _change_material_texture(resource: Resource, slot: int) -> void:
 		return
 	var source := previous.surface_get_material(0) as ShaderMaterial
 	if source == null or source.shader == null:
-		_status("This mesh needs the Terrainy four-layer ShaderMaterial.")
+		_status("This mesh needs a Terrainy four-layer ShaderMaterial.")
+		return
+	# Clearing a resource picker restores the bundled example. Do not leave
+	# shader samplers empty, which would render one channel black.
+	var texture := resource as Texture2D
+	if texture == null:
+		texture = load(PAINT_TEXTURE_DEFAULTS[slot]) as Texture2D
+	if source.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot]) == texture:
+		_sync_material_pickers()
 		return
 	var cloned := source.duplicate(true) as ShaderMaterial
-	cloned.set_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot], resource as Texture2D)
+	cloned.set_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot], texture)
 	var replacement := ArrayMesh.new()
 	replacement.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, previous.surface_get_arrays(0))
 	replacement.surface_set_material(0, cloned)
@@ -647,9 +767,12 @@ func _change_material_texture(resource: Resource, slot: int) -> void:
 	undo.create_action("Change Terrainy Surface Texture")
 	undo.add_do_property(mesh, "mesh", replacement)
 	undo.add_undo_property(mesh, "mesh", previous)
+	undo.add_do_method(self, "_sync_material_pickers")
+	undo.add_undo_method(self, "_sync_material_pickers")
 	undo.commit_action()
 	var result: Error = Storage.persist_terrain(mesh)
+	_sync_material_pickers()
 	if result != OK:
-		_status("Texture changed, but saving resource failed: %s" % error_string(result))
+		_status("Texture updated but saving its resource failed: %s" % error_string(result))
 	else:
-		_status("Surface texture assigned. Paint with the corresponding layer.")
+		_status("%s texture updated. Paint with that material." % layer_select.get_item_text(slot))
