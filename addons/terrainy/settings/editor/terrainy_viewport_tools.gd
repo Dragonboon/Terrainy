@@ -562,7 +562,7 @@ func _toggle_biome_debug(enabled: bool) -> void:
 func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
 	if mesh == null or Storage.mesh_resolution(mesh) == 0:
 		return
-	var profile := _physics_profile()
+	var profile: TerrainConfiguration = generator.terrains.get(mesh) as TerrainConfiguration if is_instance_valid(generator) else null
 	if profile != null and profile.generate_collision:
 		var heights: PackedFloat32Array = Sculpt.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
 		_update_collision(mesh, heights, Storage.mesh_resolution(mesh), profile)
