@@ -5,7 +5,9 @@ const Builder = preload("res://addons/terrainy/src/terrain/terrains/underwater_f
 func _initialize() -> void:
 	var config := load("res://addons/terrainy/presets/island.tres") as TerrainNoiseConfiguration
 	assert(config != null)
-	assert(config.generate_underwater_foundation)
+	assert(not config.generate_underwater_foundation, "Experimental seabed must be disabled by default")
+	config = config.duplicate(true) as TerrainNoiseConfiguration
+	config.generate_underwater_foundation = true
 	var n: int = 17
 	var samples := PackedFloat32Array()
 	samples.resize(n * n)

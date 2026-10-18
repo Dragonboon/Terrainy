@@ -164,7 +164,5 @@ Developed by [sempitern0](https://github.com/sempitern0) within [Dragonboon](htt
 **Generate New** automatically creates a new seed and modest configuration
 variations when **Vary** is checked. The seed appears in the editor status,
 and the resulting configuration is saved per mesh. Turning **Vary** off repeats
-the last effective profile. Existing terrain meshes are not overwritten by
-this exploration action; edited landscapes remain available for comparison.
-The Island preset also forms an irregular low coastal outline and a rounded
-volcanic seabed rather than a box-shaped underwater skirt.
+the last effective profile. Generate New deliberately replaces the currently selected terrain, including its manually painted/sculpted geometry. Use + Mesh explicitly to preserve an alternative.
+The Island preset forms an irregular coastal outline. The experimental underwater foundation is off by default, with restrained depth and spread when enabled.
