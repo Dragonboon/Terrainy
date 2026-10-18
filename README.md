@@ -23,6 +23,7 @@ Terrainy is a small, editor-first plugin for **Godot 4.7**. It focuses on genera
 - **Organic Sculpt:** Raise, Lower, Smooth and Flatten with brush presets, custom Texture2D stamps, terrain-following brush preview and per-stroke Undo/Redo.
 - **Material painting:** four customizable Texture2D material slots and optional dual-material organic strokes blended with automatic height/slope biomes; triplanar texture projection and low-frequency variation reduce repetitive tiling.
 - **Efficient static collision:** separate lower-resolution terrain collider, regenerated when geometry changes rather than on every paint movement.
+- **Volcanic underwater foundations:** optional, low-noise seabed geometry under island coasts, without duplicating the full terrain mesh; optional static collision.
 - **Procedural tile grids:** preview, apply or cancel finite deterministic layouts (Continuous, Archipelago, Valley, Ridgeline), with up to 16 editable tiles and shared sampled boundaries.
 - **Seam-aware editing:** compatible Grid siblings share edge heights and normals during Sculpt, with one Undo/Redo action for the affected tiles.
 - **Editable scene assets:** generated meshes and colliders are stored as compressed external `.res` Resources under `res://terrainy_generated/`.
@@ -61,6 +62,8 @@ The five bundled profiles, shader materials and brush masks live inside the addo
 Each brush stroke can be undone and redone. Collision is rebuilt after an affected Sculpt stroke, not after painting material colors.
 
 **Important:** Regenerating a terrain replaces its manual Sculpt and Paint modifications. Save a duplicate scene or generated mesh first when experimenting with new seeds and geometry. Independent, non-destructive paint storage is not implemented yet.
+
+For an island, **Generate → Seabed** enables a smooth submerged foundation. Adjust its depth, spread and roughness in **Edit Profile**; the bundled Island profile has sensible defaults. See [Underwater foundations](docs/UNDERWATER_FOUNDATION.md).
 
 ## Quick start: procedural layouts
 

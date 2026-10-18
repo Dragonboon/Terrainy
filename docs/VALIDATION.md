@@ -56,3 +56,12 @@ they create, never existing user terrain files.
 The old runtime procedural renderer and runtime brush are separate experimental
 paths and are not covered by this editor-grid regression gate. Keep the PR draft
 until target-editor acceptance is complete.
+
+## Underwater island foundation
+
+- Run `godot --headless --path . --script res://tests/terrain_underwater_foundation_checks.gd` (also included in `tools/run_checks.py`).
+- In Godot 4.7 open the example, choose Island, enable Seabed and Generate.
+- View the terrain from underwater, check exterior normals/lighting and verify that the bottom has no opening.
+- Sculpt the coast and confirm the foundation updates to match the latest edge heights.
+- Turn Seabed off and regenerate; confirm the child is removed. Test optional collision and save/reopen with external resources.
+- On a 2x2 grid verify that no overlapping per-tile seabeds are produced. Shared grid foundations are not implemented yet.

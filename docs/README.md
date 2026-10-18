@@ -6,6 +6,7 @@ first scene. The documentation is deliberately organized by user task.
 | Guide | Use it for |
 | --- | --- |
 | [Editor painting & sculpting](EDITOR_PAINTING.md) | Brush stamps, organic height edits, materials, Undo/Redo, collision and persistence |
+| [Underwater foundations](UNDERWATER_FOUNDATION.md) | Island seabed volume, depth, smoothness and optional collision |
 | [Procedural grids](PROCEDURAL_GRID.md) | Layout previews, multi-tile Apply, deterministic seams and cancellation |
 | [Architecture](ARCHITECTURE.md) | Module responsibilities, storage, compatibility and editor/runtime boundary |
 | [Validation](VALIDATION.md) | Headless regression commands and manual Godot 4.7 acceptance |
