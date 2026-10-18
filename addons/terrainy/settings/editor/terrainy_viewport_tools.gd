@@ -26,6 +26,7 @@ var target_select: OptionButton
 var layer_select: OptionButton
 var radius_input: SpinBox
 var strength_input: SpinBox
+var brush_picker: EditorResourcePicker
 var physics_resolution: SpinBox
 var physics_enabled: CheckBox
 var status: Label
@@ -88,6 +89,11 @@ func _create_palette() -> void:
 	palette = VBoxContainer.new()
 	palette.name = "Terrainy Tools"
 	palette.custom_minimum_size = Vector2(42, 0)
+	palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var top_spacer := Control.new()
+	top_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	palette.add_child(top_spacer)
 	var group := ButtonGroup.new()
 	for data in [
 		["Cursor", "ToolSelect", "Selection — leave painting mode"],
@@ -159,7 +165,14 @@ func _create_context() -> void:
 	_add_label(paint_row, "Strength")
 	strength_input = _spin(paint_row, 0.01, 1.0, 0.05, 0.35, "")
 	strength_input.value_changed.connect(func(value: float): painter.strength = value)
-	_add_label(paint_row, "Drag left mouse to paint · Undo Ctrl+Z")
+	_add_label(paint_row, "Brush")
+	brush_picker = EditorResourcePicker.new()
+	brush_picker.base_type = "Texture2D"
+	brush_picker.custom_minimum_size.x = 128
+	brush_picker.edited_resource = painter.brush_texture
+	brush_picker.resource_changed.connect(func(resource: Resource): painter.set_brush_texture(resource as Texture2D))
+	paint_row.add_child(brush_picker)
+	_add_label(paint_row, "Drag to paint · Ctrl+Z")
 	context.add_child(paint_row)
 	tool_rows.append(paint_row)
 

@@ -9,6 +9,8 @@ var active := false
 var radius: float = 12.0
 var strength: float = 0.35
 var layer: int = 0
+var brush_texture: Texture2D
+var _brush_image: Image
 var stroke_origin: ArrayMesh
 var stroke_mesh: ArrayMesh
 var stroke_active := false
@@ -18,6 +20,7 @@ var last_mouse_point := Vector2(INF, INF)
 
 func setup(editor_plugin: EditorPlugin) -> void:
 	plugin = editor_plugin
+	set_brush_texture(load("res://addons/terrainy/src/terrain/brush/textures/transparent/circle2.png") as Texture2D)
 
 
 func cleanup() -> void:
@@ -88,11 +91,20 @@ func _apply(local_position: Vector3) -> void:
 		return
 	last_local_point = local_position
 	var next_mesh: ArrayMesh = Painter.paint(
-		stroke_mesh, local_position, radius, strength, layer
+		stroke_mesh, local_position, radius, strength, layer, _brush_image
 	)
 	if next_mesh != stroke_mesh:
 		stroke_mesh = next_mesh
 		target.mesh = stroke_mesh
+
+func set_brush_texture(texture: Texture2D) -> void:
+	brush_texture = texture
+	_brush_image = null
+	if texture != null:
+		_brush_image = texture.get_image()
+		if _brush_image != null and _brush_image.is_compressed():
+			if _brush_image.decompress() != OK:
+				_brush_image = null
 
 
 func _finish_stroke() -> void:

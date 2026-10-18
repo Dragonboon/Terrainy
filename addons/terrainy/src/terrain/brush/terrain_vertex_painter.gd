@@ -3,7 +3,7 @@ extends RefCounted
 ## Pure mesh editing helper. Each edit returns a NEW mesh for editor UndoRedo.
 ## Vertex colors are RGBA layer weights (red is the default layer).
 
-static func paint(mesh: ArrayMesh, local_center: Vector3, radius: float, strength: float, channel: int) -> ArrayMesh:
+static func paint(mesh: ArrayMesh, local_center: Vector3, radius: float, strength: float, channel: int, brush_image: Image = null) -> ArrayMesh:
 	if mesh == null or mesh.get_surface_count() == 0 or radius <= 0.0:
 		return mesh
 	if channel < 0 or channel > 3:
@@ -14,6 +14,11 @@ static func paint(mesh: ArrayMesh, local_center: Vector3, radius: float, strengt
 		var arrays: Array = mesh.surface_get_arrays(surface_index)
 		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+		var influences: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
+		if influences.size() != vertices.size():
+			influences.resize(vertices.size())
+			for j in range(influences.size()):
+				influences[j] = Vector2.ZERO
 		if colors.size() != vertices.size():
 			colors.resize(vertices.size())
 			for index in range(colors.size()):
@@ -23,6 +28,15 @@ static func paint(mesh: ArrayMesh, local_center: Vector3, radius: float, strengt
 			if distance >= radius:
 				continue
 			var weight := clampf(strength, 0.0, 1.0) * pow(1.0 - distance / radius, 2.0)
+			if brush_image != null and not brush_image.is_empty():
+				var stamp_uv := Vector2(
+					(vertices[index].x - local_center.x) / (2.0 * radius) + 0.5,
+					(vertices[index].z - local_center.z) / (2.0 * radius) + 0.5
+				)
+				var px := clampi(int(stamp_uv.x * float(brush_image.get_width() - 1)), 0, brush_image.get_width() - 1)
+				var py := clampi(int(stamp_uv.y * float(brush_image.get_height() - 1)), 0, brush_image.get_height() - 1)
+				var stamp := brush_image.get_pixel(px, py)
+				weight *= stamp.a if stamp.a < 0.999 else stamp.r
 			if weight <= 0.0:
 				continue
 			var target := Color(0.0, 0.0, 0.0, 0.0)
@@ -32,8 +46,10 @@ static func paint(mesh: ArrayMesh, local_center: Vector3, radius: float, strengt
 				2: target.b = 1.0
 				3: target.a = 1.0
 			colors[index] = colors[index].lerp(target, weight)
+			influences[index].x = clampf(influences[index].x + weight, 0.0, 1.0)
 			changed = true
 		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_TEX_UV2] = influences
 		result.add_surface_from_arrays(mesh.surface_get_primitive_type(surface_index), arrays)
 		result.surface_set_material(surface_index, mesh.surface_get_material(surface_index))
 		result.surface_set_name(surface_index, mesh.surface_get_name(surface_index))

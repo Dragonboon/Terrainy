@@ -29,17 +29,20 @@ static func build(config: TerrainConfiguration) -> Dictionary:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	var uv2 := PackedVector2Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	vertices.resize(width * width)
 	normals.resize(width * width)
 	uvs.resize(width * width)
+	uv2.resize(width * width)
 	colors.resize(width * width)
 	for z in range(width):
 		for x in range(width):
 			var i := z * width + x
 			vertices[i] = Vector3(-config.size_width * 0.5 + x * step_x, heights[i], -config.size_depth * 0.5 + z * step_z)
 			uvs[i] = Vector2(float(x) / size, float(z) / size)
+			uv2[i] = Vector2.ZERO # Manual paint influence, independent of biome weights
 			colors[i] = Color(1.0, 0.0, 0.0, 0.0)
 			var left := heights[z * width + maxi(0, x - 1)]
 			var right := heights[z * width + mini(size, x + 1)]
@@ -49,12 +52,13 @@ static func build(config: TerrainConfiguration) -> Dictionary:
 	for z in range(size):
 		for x in range(size):
 			var i := z * width + x
-			indices.append_array(PackedInt32Array([i, i + width, i + 1, i + 1, i + width, i + width + 1]))
+			indices.append_array(PackedInt32Array([i, i + 1, i + width, i + 1, i + width + 1, i + width]))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2
 	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
@@ -115,7 +119,7 @@ static func collision_from_heights(heights: PackedFloat32Array, visual_resolutio
 			var b := _collision_vertex(x + 1, z, cells, heights, visual_resolution, config)
 			var c := _collision_vertex(x, z + 1, cells, heights, visual_resolution, config)
 			var d := _collision_vertex(x + 1, z + 1, cells, heights, visual_resolution, config)
-			faces.append_array(PackedVector3Array([a, c, b, b, c, d]))
+			faces.append_array(PackedVector3Array([a, b, c, b, d, c]))
 	var shape := ConcavePolygonShape3D.new()
 	shape.set_faces(faces)
 	return shape
