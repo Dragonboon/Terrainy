@@ -5,6 +5,7 @@ const Painter = preload("res://addons/terrainy/src/terrain/brush/terrain_vertex_
 const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
 const EditSession = preload("res://addons/terrainy/src/terrain/brush/terrain_edit_session.gd")
+const GridSession = preload("res://addons/terrainy/src/terrain/brush/terrain_grid_sculpt_session.gd")
 
 var plugin: EditorPlugin
 var target: MeshInstance3D
@@ -23,6 +24,7 @@ var brush_texture: Texture2D
 var _brush_image: Image
 var stroke_origin: ArrayMesh
 var stroke_mesh: ArrayMesh
+var _grid_session: RefCounted
 var _session: RefCounted
 var _hover_session: RefCounted
 var _hover_mesh: ArrayMesh
@@ -106,6 +108,9 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			if not _session.valid:
 				_session = null
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
+			if sculpt_enabled and target.get_parent() != null and target.get_parent().name == "TerrainyGrid":
+				_grid_session = GridSession.new()
+				_grid_session.setup(target, _session, stroke_origin)
 			stroke_active = true
 			_last_flush_ms = 0
 			_last_stamp_ms = Time.get_ticks_msec()
@@ -153,7 +158,10 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 	last_local_point = local_position
 	var changed: bool = false
 	if sculpt_enabled:
-		changed = _session.sculpt(local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
+		if _grid_session != null and not _grid_session.nodes.is_empty():
+			changed = _grid_session.apply(target.to_global(local_position), radius, sculpt_strength, sculpt_operation, target.to_global(Vector3(0.0, flatten_height, 0.0)).y, _brush_image)
+		else:
+			changed = _session.sculpt(local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
 	else:
 		changed = _session.paint(local_position, radius, strength, layer, _brush_image)
 	if not changed:
@@ -167,8 +175,12 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 func _flush_preview() -> void:
 	if _session == null or not _session.valid or not _session.dirty:
 		return
-	stroke_mesh = _session.flush_mesh()
-	target.mesh = stroke_mesh
+	if _grid_session != null and not _grid_session.nodes.is_empty():
+		_grid_session.flush()
+		stroke_mesh = target.mesh
+	else:
+		stroke_mesh = _session.flush_mesh()
+		target.mesh = stroke_mesh
 	_hover_session = null
 	_hover_mesh = null
 
@@ -186,7 +198,28 @@ func set_brush_texture(texture: Texture2D) -> void:
 func _finish_stroke() -> void:
 	stroke_active = false
 	_flush_preview()
-	if is_instance_valid(target) and stroke_mesh != stroke_origin and stroke_mesh != null:
+	if _grid_session != null and not _grid_session.nodes.is_empty() and sculpt_enabled:
+		var changes: Array[MeshInstance3D] = _grid_session.changed_nodes()
+		if not changes.is_empty():
+			var undo := plugin.get_undo_redo()
+			undo.create_action("Sculpt Terrainy Grid")
+			for node in changes:
+				var previous: ArrayMesh = _grid_session.origin_for(node)
+				var current: ArrayMesh = node.mesh
+				undo.add_do_property(node, "mesh", current)
+				undo.add_undo_property(node, "mesh", previous)
+				var shape_node := node.get_node_or_null("TerrainyCollider/Shape") as CollisionShape3D
+				if shape_node != null and sculpt_finished.is_valid():
+					var original_shape: Shape3D = shape_node.shape
+					sculpt_finished.call(node)
+					undo.add_do_property(shape_node, "shape", shape_node.shape)
+					undo.add_undo_property(shape_node, "shape", original_shape)
+			undo.commit_action()
+			for node in changes:
+				var result: Error = Storage.persist_terrain(node)
+				if result != OK:
+					push_warning("Terrainy: could not save %s: %s" % [node.name, error_string(result)])
+	elif is_instance_valid(target) and stroke_mesh != stroke_origin and stroke_mesh != null:
 		var undo := plugin.get_undo_redo()
 		var resolution := Storage.mesh_resolution(target)
 		
@@ -214,6 +247,7 @@ func _finish_stroke() -> void:
 	stroke_origin = null
 	stroke_mesh = null
 	_session = null
+	_grid_session = null
 	_hover_session = null
 	_hover_mesh = null
 	last_local_point = Vector3(INF, INF, INF)
