@@ -5,7 +5,6 @@ extends RefCounted
 
 const Builder = preload("res://addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
-const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 const Procedural = preload("res://addons/terrainy/settings/editor/terrainy_procedural_tools.gd")
 const PRESET_ROOT := "res://addons/terrainy/presets/"
 const PRESETS := ["Soft hills", "Highlands", "Mountains", "Island", "Dunes"]
@@ -471,7 +470,7 @@ func _rebuild_collision() -> void:
 		_status("Collision removed.")
 		return
 	
-	var heights: PackedFloat32Array = Sculpt.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
+	var heights: PackedFloat32Array = Storage.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
 	var resolution: int = Storage.mesh_resolution(mesh)
 	_update_collision(mesh, heights, resolution, profile)
 	_status("Collision rebuilt at %d cells/axis." % mini(profile.collision_resolution, resolution))
@@ -566,7 +565,7 @@ func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
 		return
 	var profile: TerrainConfiguration = generator.terrains.get(mesh) as TerrainConfiguration if is_instance_valid(generator) else null
 	if profile != null and profile.generate_collision:
-		var heights: PackedFloat32Array = Sculpt.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
+		var heights: PackedFloat32Array = Storage.extract_heights(mesh.mesh as ArrayMesh, Storage.mesh_resolution(mesh))
 		_update_collision(mesh, heights, Storage.mesh_resolution(mesh), profile)
 	_status("Sculpt complete. Collision updated; save the scene.")
 

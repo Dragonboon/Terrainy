@@ -57,3 +57,18 @@ static func mesh_resolution(mesh_node: MeshInstance3D) -> int:
 	if stride < 2 or stride * stride != points.size():
 		return 0
 	return stride - 1
+
+
+## Reconstruct editor height samples from a saved regular grid; do not
+## serialize a second height buffer in scene metadata.
+static func extract_heights(mesh: ArrayMesh, resolution: int) -> PackedFloat32Array:
+	var heights := PackedFloat32Array()
+	if mesh == null or mesh.get_surface_count() != 1 or resolution < 1:
+		return heights
+	var vertices: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	if vertices.size() != (resolution + 1) * (resolution + 1):
+		return heights
+	heights.resize(vertices.size())
+	for i in range(vertices.size()):
+		heights[i] = vertices[i].y
+	return heights

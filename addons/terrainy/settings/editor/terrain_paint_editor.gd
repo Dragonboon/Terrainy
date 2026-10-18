@@ -1,8 +1,6 @@
 @tool
 extends RefCounted
 ## Brush input controller only. Tool UI belongs to TerrainyViewportTools.
-const Painter = preload("res://addons/terrainy/src/terrain/brush/terrain_vertex_painter.gd")
-const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
 const EditSession = preload("res://addons/terrainy/src/terrain/brush/terrain_edit_session.gd")
 const GridSession = preload("res://addons/terrainy/src/terrain/brush/terrain_grid_sculpt_session.gd")
