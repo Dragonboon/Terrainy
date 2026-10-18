@@ -14,6 +14,7 @@ closes with a bottom cap. No interior heightfield duplication is required.
 ## Using it
 
 - The bundled **Island** preset enables the feature by default.
+- The **Generate → Seabed** checkbox turns the effect on or off quickly.
 - Open **Generate → Edit Profile**, then find **Underwater foundation (editor)**
   on its `TerrainNoiseConfiguration` Resource.
 - `Generate Underwater Foundation`: enable or disable the geometry.
@@ -40,10 +41,10 @@ the mesh and optional collider use compressed `.res` assets outside the scene.
 - The generated foundation joins the outer rectangular grid boundary. It is
   most natural with radial/island profiles whose coastal terrain has already
   descended at the perimeter.
-- Each Grid tile has an independent foundation. For contiguous multi-tile
-  islands, the expanding per-tile bases can overlap and produce seams; prefer
-  a single island terrain for now. Shared-grid submarine geometry should be
-  generated from the *outer grid perimeter* in a future iteration.
+- For now, Grid only adds the foundation to a 1x1 layout. A multi-tile
+  grid deliberately skips it to prevent underwater skirts from overlapping.
+  A future iteration should build one shared foundation from the outer grid
+  perimeter, rather than from each tile.
 - Only the boundary geometry is generated underwater, with no interior
   caves, overhangs or volumetric terrain.
 - Test visibility from underwater, normal orientation, save/reopen and optional

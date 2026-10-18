@@ -50,6 +50,7 @@ var physics_resolution: SpinBox
 var physics_enabled: CheckBox
 var status: Label
 var generate_button: Button
+var underwater_check: CheckBox
 var _busy := false
 var _switching_selection := false
 var procedural: RefCounted
@@ -108,6 +109,7 @@ func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 		current_profile = generator.terrains[targets[0]]
 		profile_select.select(PRESETS.size())
 	procedural.set_context(generator, current_profile)
+	_sync_underwater_toggle()
 	_sync_material_pickers()
 	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
@@ -180,6 +182,11 @@ func _create_context() -> void:
 	generation_row.add_child(target_select)
 	_add_button(generation_row, "+ Mesh", "Create a target MeshInstance3D", _create_target)
 	_add_button(generation_row, "Edit Profile", "Edit the selected Resource in the Inspector", _edit_profile)
+	underwater_check = CheckBox.new()
+	underwater_check.text = "Seabed"
+	underwater_check.tooltip_text = "Generate a smooth volcanic underwater base. Advanced depth and roughness controls: Edit Profile."
+	underwater_check.toggled.connect(_toggle_underwater)
+	generation_row.add_child(underwater_check)
 	generate_button = _add_button(generation_row, "Generate", "Rebuild mesh and collision from the selected profile. Replaces paint.", _generate)
 	context.add_child(generation_row)
 	tool_rows.append(generation_row)
@@ -406,6 +413,7 @@ func _choose_profile(index: int) -> void:
 		if mesh != null and generator.terrains.has(mesh):
 			current_profile = generator.terrains[mesh]
 	procedural.set_context(generator, current_profile)
+	_sync_underwater_toggle()
 	_status("Profile selected. Generate when ready.")
 
 
@@ -857,3 +865,17 @@ func _sync_underwater(mesh: MeshInstance3D, config: TerrainNoiseConfiguration) -
 	var saved: Error = Storage.persist_terrain(existing)
 	if saved != OK:
 		_status("Underwater foundation created but saving failed: %s" % error_string(saved))
+
+
+func _sync_underwater_toggle() -> void:
+	if underwater_check == null:
+		return
+	var supported := current_profile is TerrainNoiseConfiguration
+	underwater_check.disabled = not supported
+	underwater_check.set_pressed_no_signal(supported and (current_profile as TerrainNoiseConfiguration).generate_underwater_foundation)
+
+
+func _toggle_underwater(enabled: bool) -> void:
+	if current_profile is TerrainNoiseConfiguration:
+		(current_profile as TerrainNoiseConfiguration).generate_underwater_foundation = enabled
+		_status("Seabed %s. Generate to apply." % ("enabled" if enabled else "disabled"))

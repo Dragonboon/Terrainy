@@ -156,7 +156,7 @@ func _process_next(token: int) -> void:
 			collider.owner = plugin.get_editor_interface().get_edited_scene_root()
 			collider.shape = shape
 	# Each tile receives its own bounded seamount skirt; no full mirrored mesh.
-	if cfg.generate_underwater_foundation:
+	if cfg.generate_underwater_foundation and columns == 1 and rows == 1:
 		var foundation: Dictionary = Foundation.build(
 			result["heights"], int(prepared["cells"]) + 1, int(prepared["cells"]) + 1,
 			float(cfg.size_width), float(cfg.size_depth), cfg
@@ -181,6 +181,8 @@ func _process_next(token: int) -> void:
 			var seabed_save: Error = Storage.persist_terrain(seabed)
 			if seabed_save != OK:
 				_report("Underwater foundation save failed: %s" % error_string(seabed_save))
+	if cfg.generate_underwater_foundation and (columns > 1 or rows > 1) and applied == 0:
+		_report("Underwater skirts are limited to 1x1 grids to avoid overlapping underwater geometry.")
 	var save_error: Error = Storage.persist_terrain(mesh_node)
 	if save_error != OK:
 		_report("Tile %d,%d generated but saving failed: %s" % [coord.x, coord.y, error_string(save_error)])
