@@ -65,3 +65,29 @@ The orange outline must conform to the terrain and clip at patch boundaries.
 Radius is measured in terrain local XZ metres; non-uniform scaling can change
 the apparent world radius. If the selected mesh lacks the editor-generated
 height grid, the toolbar explains that it must be regenerated first.
+
+## Scene size and resource persistence
+
+Generated visual meshes and colliders are now saved under
+`res://terrainy_generated/` as compressed external `.res` resources. Do not
+remove that folder: scenes refer to these resources. Terrain height samples are
+reconstructed from the mesh instead of serialized again as metadata.
+Re-generate once (or make a new Paint/Sculpt stroke) and save the scene to
+externalize terrain from scenes created before this change. Make a backup of
+existing edited scenes before regeneration, because regenerating still removes
+manual paint/sculpt modifications.
+
+The Scene file should not embed the full ArrayMesh or collision face arrays
+after migration. A revision is saved separately to avoid mutating the mesh
+referenced by Undo/Redo. Old unused generated files may accumulate and should
+only be cleaned up after checking scene references.
+
+## Held brush
+
+The first stamp applies immediately when the left mouse button is pressed.
+While held in Paint or Sculpt mode, a new stamp is applied approximately every
+90 ms even if the cursor stays stationary. A whole stroke remains one
+Undo/Redo action; collision is rebuilt at stroke completion.
+
+Paint and Sculpt both expose the same five bundled brush presets and a custom
+Texture2D selector, and share the chosen brush shape.
