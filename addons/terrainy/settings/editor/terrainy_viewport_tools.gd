@@ -8,7 +8,7 @@ const PRESET_ROOT := "res://addons/terrainy/presets/"
 const PRESETS := ["Soft hills", "Highlands", "Mountains", "Island", "Dunes"]
 const PATHS := ["soft_hills.tres", "highlands.tres", "mountains.tres", "island.tres", "dunes.tres"]
 
-enum Tool { SELECT, GENERATE, PAINT, COLLISION }
+enum Tool { SELECT, GENERATE, PAINT, COLLISION, SCULPT }
 
 var plugin: EditorPlugin
 var painter: RefCounted
@@ -27,6 +27,11 @@ var layer_select: OptionButton
 var radius_input: SpinBox
 var strength_input: SpinBox
 var brush_picker: EditorResourcePicker
+var brush_presets: OptionButton
+var sculpt_mode: OptionButton
+var sculpt_strength: SpinBox
+var debug_check: CheckBox
+var header: Label
 var physics_resolution: SpinBox
 var physics_enabled: CheckBox
 var status: Label
@@ -81,7 +86,7 @@ func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 	elif current_profile == null and not targets.is_empty() and generator.terrains.has(targets[0]):
 		current_profile = generator.terrains[targets[0]]
 		profile_select.select(PRESETS.size())
-	if tool == Tool.PAINT:
+	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 
 
@@ -100,9 +105,10 @@ func _create_palette() -> void:
 		["Generate", "MeshInstance3D", "Generate a natural terrain from a profile"],
 		["Paint", "Paint", "Paint one of four surface layers"],
 		["Collision", "CollisionShape3D", "Generate or adjust terrain collision"],
+		["Sculpt", "Curve3D", "Raise, lower, smooth or flatten terrain heights"],
 	]:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(38, 38)
+		button.custom_minimum_size = Vector2(48, 48)
 		button.flat = true
 		button.toggle_mode = true
 		button.button_group = group
@@ -120,7 +126,7 @@ func _create_palette() -> void:
 
 
 func _create_context() -> void:
-	context = HBoxContainer.new()
+	context = HFlowContainer.new()
 	context.name = "Terrainy Context"
 	context.custom_minimum_size = Vector2(0, 38)
 	context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -173,6 +179,13 @@ func _create_context() -> void:
 	brush_picker.resource_changed.connect(func(resource: Resource): painter.set_brush_texture(resource as Texture2D))
 	paint_row.add_child(brush_picker)
 	_add_label(paint_row, "Drag to paint · Ctrl+Z")
+	brush_presets = OptionButton.new()
+	brush_presets.tooltip_text = "Ready-to-use Terrainy stamps, or select a custom Texture2D."
+	for name in ["Soft circle", "Hard circle", "Hill", "Mountain", "Acrylic", "Custom"]:
+		brush_presets.add_item(name)
+	brush_presets.item_selected.connect(_select_brush_preset)
+	paint_row.add_child(brush_presets)
+	paint_row.move_child(brush_presets, paint_row.get_child_count() - 3)
 	context.add_child(paint_row)
 	tool_rows.append(paint_row)
 
@@ -191,6 +204,27 @@ func _create_context() -> void:
 	context.add_child(collision_row)
 	tool_rows.append(collision_row)
 
+var sculpt_row := HBoxContainer.new()
+	_add_label(sculpt_row, "Sculpt")
+	sculpt_mode = OptionButton.new()
+	for name in ["Raise", "Lower", "Smooth", "Flatten"]:
+		sculpt_mode.add_item(name)
+	sculpt_mode.item_selected.connect(func(index: int): painter.sculpt_operation = index)
+	sculpt_row.add_child(sculpt_mode)
+	_add_label(sculpt_row, "Radius")
+	var sculpt_radius := _spin(sculpt_row, 0.5, 128.0, 0.5, 12.0, " m")
+	sculpt_radius.value_changed.connect(func(value: float): painter.radius = value)
+	_add_label(sculpt_row, "Strength")
+	sculpt_strength = _spin(sculpt_row, 0.01, 12.0, 0.1, 2.0, " m")
+	sculpt_strength.value_changed.connect(func(value: float): painter.sculpt_strength = value)
+	_add_label(sculpt_row, "Collision updates after stroke")
+	context.add_child(sculpt_row)
+	tool_rows.append(sculpt_row)
+	debug_check = CheckBox.new()
+	debug_check.text = "Biome debug"
+	debug_check.tooltip_text = "Show distinct biome colors to inspect elevation and slope transitions."
+	debug_check.toggled.connect(_toggle_biome_debug)
+	context.add_child(debug_check)
 	status = Label.new()
 	status.clip_text = true
 	status.custom_minimum_size.x = 120
@@ -206,11 +240,11 @@ func _set_tool(mode: int) -> void:
 		buttons[i].set_pressed_no_signal(i == tool)
 	for i in range(tool_rows.size()):
 		tool_rows[i].visible = i == tool
-	if tool == Tool.PAINT:
+	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 	else:
 		painter.set_active(false)
-	_status(["Select a tool", "Choose a preset and generate", "Left-drag paints selected mesh", "Set physics resolution then rebuild"][tool])
+	_status(["Select a tool", "Choose a preset and generate", "Left-drag paints selected mesh", "Set physics resolution then rebuild", "Left-drag sculpts terrain height"][tool])
 
 
 func _activate_paint_target() -> void:
@@ -225,6 +259,7 @@ func _activate_paint_target() -> void:
 		_switching_selection = false
 	# Selecting another node sends a selection_changed signal synchronously.
 	painter.edit(mesh)
+	painter.sculpt_enabled = tool == Tool.SCULPT
 	painter.set_active(true)
 
 
@@ -440,3 +475,31 @@ func _status(message: String) -> void:
 	if status != null:
 		status.text = message
 		status.tooltip_text = message
+
+func _select_brush_preset(index: int) -> void:
+	if index == 5:
+		return
+	var names := ["circle2", "circle0", "hill1", "mountain1", "acrylic1"]
+	var texture := load("res://addons/terrainy/src/terrain/brush/textures/transparent/" + names[index] + ".png") as Texture2D
+	if texture != null:
+		painter.set_brush_texture(texture)
+		brush_picker.edited_resource = texture
+
+
+func _toggle_biome_debug(enabled: bool) -> void:
+	var mesh := _target()
+	if mesh == null or mesh.mesh == null:
+		return
+	var material := mesh.mesh.surface_get_material(0) as ShaderMaterial
+	if material != null:
+		material.set_shader_parameter("debug_biomes", enabled)
+
+
+func refresh_after_sculpt(mesh: MeshInstance3D) -> void:
+	if mesh == null or not mesh.has_meta(&"terrainy_height_samples"):
+		return
+	var profile := _physics_profile()
+	if profile != null and profile.generate_collision:
+		var heights: PackedFloat32Array = mesh.get_meta(&"terrainy_height_samples")
+		_update_collision(mesh, heights, int(mesh.get_meta(&"terrainy_height_resolution")), profile)
+	_status("Sculpt complete. Collision updated; save the scene.")
