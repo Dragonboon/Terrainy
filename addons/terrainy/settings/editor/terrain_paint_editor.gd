@@ -4,6 +4,7 @@ extends RefCounted
 const Painter = preload("res://addons/terrainy/src/terrain/brush/terrain_vertex_painter.gd")
 const Sculpt = preload("res://addons/terrainy/src/terrain/brush/terrain_height_sculpt.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
+const EditSession = preload("res://addons/terrainy/src/terrain/brush/terrain_edit_session.gd")
 
 var plugin: EditorPlugin
 var target: MeshInstance3D
@@ -22,6 +23,9 @@ var brush_texture: Texture2D
 var _brush_image: Image
 var stroke_origin: ArrayMesh
 var stroke_mesh: ArrayMesh
+var _session: RefCounted
+var _last_flush_ms: int = 0
+const PREVIEW_INTERVAL_MS: int = 120
 var stroke_active := false
 var last_local_point := Vector3(INF, INF, INF)
 var last_mouse_point := Vector2(INF, INF)
@@ -72,7 +76,7 @@ func update_hover(camera: Camera3D, mouse_position: Vector2) -> void:
 
 
 func repeat_held_stamp() -> void:
-	if not stroke_active or not is_instance_valid(target) or not hover_valid:
+	if not stroke_active or not is_instance_valid(target) or not hover_valid or _session == null:
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _last_stamp_ms < STAMP_INTERVAL_MS:
@@ -94,7 +98,12 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
 			stroke_origin = target.mesh
 			stroke_mesh = stroke_origin
+			_session = EditSession.new(stroke_origin)
+			if not _session.valid:
+				_session = null
+				return EditorPlugin.AFTER_GUI_INPUT_PASS
 			stroke_active = true
+			_last_flush_ms = 0
 			_last_stamp_ms = Time.get_ticks_msec()
 			flatten_height = hit.position.y
 			last_local_point = Vector3(INF, INF, INF)
@@ -119,24 +128,41 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 func _hit(camera: Camera3D, position: Vector2) -> Dictionary:
 	var ray_origin := camera.project_ray_origin(position)
 	var ray_end := ray_origin + camera.project_ray_normal(position) * camera.far
-	return Painter.intersect(target.mesh, target.to_local(ray_origin), target.to_local(ray_end))
+	if _session != null and _session.valid:
+		return _session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
+	# Use one cached mesh buffer even for hover; avoid scanning full triangle arrays.
+	var preview_session := EditSession.new(target.mesh as ArrayMesh)
+	return preview_session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
 
 
 func _apply(local_position: Vector3, force: bool = false) -> void:
+	if _session == null:
+		return
 	if not force and last_local_point.x != INF and Vector2(
 		last_local_point.x - local_position.x,
 		last_local_point.z - local_position.z
 	).length() < maxf(0.1, radius * 0.12):
 		return
 	last_local_point = local_position
-	var next_mesh: ArrayMesh
+	var changed: bool = false
 	if sculpt_enabled:
-		next_mesh = Sculpt.sculpt(stroke_mesh, local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
+		changed = _session.sculpt(local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
 	else:
-		next_mesh = Painter.paint(stroke_mesh, local_position, radius, strength, layer, _brush_image)
-	if next_mesh != stroke_mesh:
-		stroke_mesh = next_mesh
-		target.mesh = stroke_mesh
+		changed = _session.paint(local_position, radius, strength, layer, _brush_image)
+	if not changed:
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _last_flush_ms >= PREVIEW_INTERVAL_MS:
+		_flush_preview()
+		_last_flush_ms = now
+
+
+func _flush_preview() -> void:
+	if _session == null or not _session.valid or not _session.dirty:
+		return
+	stroke_mesh = _session.flush_mesh()
+	target.mesh = stroke_mesh
+
 
 func set_brush_texture(texture: Texture2D) -> void:
 	brush_texture = texture
@@ -150,6 +176,7 @@ func set_brush_texture(texture: Texture2D) -> void:
 
 func _finish_stroke() -> void:
 	stroke_active = false
+	_flush_preview()
 	if is_instance_valid(target) and stroke_mesh != stroke_origin and stroke_mesh != null:
 		var undo := plugin.get_undo_redo()
 		var resolution := Storage.mesh_resolution(target)
@@ -177,5 +204,6 @@ func _finish_stroke() -> void:
 			push_warning("Terrainy: failed to externalize edited mesh (%s)" % error_string(save_error))
 	stroke_origin = null
 	stroke_mesh = null
+	_session = null
 	last_local_point = Vector3(INF, INF, INF)
 	last_mouse_point = Vector2(INF, INF)
