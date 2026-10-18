@@ -1,4 +1,9 @@
-# Contribution
+# Contributing to Terrainy
+
+Terrainy is a focused Godot editor tool for bounded, natural-looking 3D terrains. Keep the editor workflow approachable and avoid dependencies on full terrain streaming frameworks.
+
+Before making changes, read the [architecture](docs/ARCHITECTURE.md) and [validation guide](docs/VALIDATION.md). Prefer small PRs with clearly scoped reproductions and regression coverage.
+
 
 Existing issues marked with a [help wanted tag](https://github.com/Dragonboon/Terrainy/labels/help%20wanted) are the best candidates for contributions. Issues with that tag are either not prioritised, or are in need of help with someone with more expertise within a certain area
 
@@ -17,7 +22,15 @@ Existing issues marked with a [help wanted tag](https://github.com/Dragonboon/Te
 3. Request something with a real-world use-case. Abstract features may not be considered.
 4. If you are capable of implementing said feature, include some code that demonstrates the finer details/nuances of said feature.
 
-## Thanks you for contributing mindfully!
+## Development workflow
+
+- Branch from the target PR base and avoid direct changes to `main` without approval.
+- Preserve serialized Resource compatibility and existing public Godot classes unless a separate migration is documented.
+- Never delete preset textures, optional shaders or legacy runtime APIs just because the editor entrypoint no longer references them; external games may load those paths.
+- Test Editor import, generated geometry, Paint/Sculpt, Undo/Redo, collision and save/reopen in Godot 4.7 for editor-facing changes.
+- Update the relevant user guide and focused tests whenever behavior changes.
+
+## Thanks for contributing
 
 ## Local checks
 
