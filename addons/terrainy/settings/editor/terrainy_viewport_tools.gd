@@ -20,7 +20,7 @@ var tool: Tool = Tool.GENERATE
 var buttons: Array[Button] = []
 var palette: VBoxContainer
 var context: HFlowContainer
-var tool_rows: Array[HBoxContainer] = []
+var tool_rows: Array[HFlowContainer] = []
 var profile_select: OptionButton
 var target_select: OptionButton
 var layer_select: OptionButton
@@ -131,13 +131,13 @@ func _create_context() -> void:
 	context.name = "Terrainy Context"
 	context.custom_minimum_size = Vector2(0, 38)
 	context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var select_row := HBoxContainer.new()
+	var select_row := HFlowContainer.new()
 	_add_label(select_row, "Terrainy  /  Select")
 	_add_label(select_row, "Choose Generate, Paint or Collision from the left toolbar.")
 	context.add_child(select_row)
 	tool_rows.append(select_row)
 
-	var generation_row := HBoxContainer.new()
+	var generation_row := HFlowContainer.new()
 	_add_label(generation_row, "Terrain")
 	profile_select = OptionButton.new()
 	profile_select.custom_minimum_size.x = 125
@@ -158,7 +158,7 @@ func _create_context() -> void:
 	context.add_child(generation_row)
 	tool_rows.append(generation_row)
 
-	var paint_row := HBoxContainer.new()
+	var paint_row := HFlowContainer.new()
 	_add_label(paint_row, "Paint")
 	layer_select = OptionButton.new()
 	layer_select.custom_minimum_size.x = 110
@@ -190,7 +190,7 @@ func _create_context() -> void:
 	context.add_child(paint_row)
 	tool_rows.append(paint_row)
 
-	var collision_row := HBoxContainer.new()
+	var collision_row := HFlowContainer.new()
 	_add_label(collision_row, "Collision")
 	physics_enabled = CheckBox.new()
 	physics_enabled.text = "Enabled"
@@ -205,7 +205,7 @@ func _create_context() -> void:
 	context.add_child(collision_row)
 	tool_rows.append(collision_row)
 
-var sculpt_row := HBoxContainer.new()
+var sculpt_row := HFlowContainer.new()
 	_add_label(sculpt_row, "Sculpt")
 	sculpt_mode = OptionButton.new()
 	for name in ["Raise", "Lower", "Smooth", "Flatten"]:
@@ -441,17 +441,17 @@ func _clear_collision(mesh: MeshInstance3D) -> void:
 		body.queue_free()
 
 
-func _add_label(parent: BoxContainer, title: String) -> void:
+func _add_label(parent: Control, title: String) -> void:
 	var label := Label.new()
 	label.text = title
 	parent.add_child(label)
 
 
-func _add_separator(parent: BoxContainer) -> void:
+func _add_separator(parent: Control) -> void:
 	parent.add_child(VSeparator.new())
 
 
-func _add_button(parent: BoxContainer, text: String, tooltip: String, callback: Callable) -> Button:
+func _add_button(parent: Control, text: String, tooltip: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.tooltip_text = tooltip
@@ -460,7 +460,7 @@ func _add_button(parent: BoxContainer, text: String, tooltip: String, callback: 
 	return button
 
 
-func _spin(parent: BoxContainer, minimum: float, maximum: float, step: float, value: float, suffix: String) -> SpinBox:
+func _spin(parent: Control, minimum: float, maximum: float, step: float, value: float, suffix: String) -> SpinBox:
 	var control := SpinBox.new()
 	control.custom_minimum_size.x = 70
 	control.min_value = minimum
