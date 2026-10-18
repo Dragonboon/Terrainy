@@ -5,6 +5,10 @@ const Edit = preload("res://addons/terrainy/src/terrain/brush/terrain_edit_sessi
 const Seam = preload("res://addons/terrainy/src/terrain/brush/terrain_grid_sculpt_session.gd")
 
 func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _run() -> void:
 	var profile := load("res://addons/terrainy/presets/soft_hills.tres") as TerrainNoiseConfiguration
 	var data: Dictionary = Grid.prepare(profile, 2, 2, 1234, 24, Grid.Layout.CONTINUOUS)
 	assert(str(data.get("error", "failed")) == "")
@@ -33,5 +37,6 @@ func _initialize() -> void:
 	var b: PackedVector3Array = (nodes[1].mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	for z in range(n + 1):
 		assert(absf(a[z * (n + 1) + n].y - b[z * (n + 1)].y) < 0.0001, "Seam gap after Sculpt")
+	group.free()
 	print("Terrainy Grid Sculpt seam test passed")
 	quit()

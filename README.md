@@ -7,9 +7,9 @@
    Quickly create natural-looking terrain with customizable noise parameters. Generate simple 3D terrain patches automatically, then optionally paint material layers in the Godot editor
 	<br />
 	·
-	<a href="https://github.com/sempitern0/terrainy/issues/new?assignees=sempitern0&labels=%F0%9F%90%9B+bug&projects=&template=bug_report.md&title=">Report Bug</a>
+	<a href="https://github.com/Dragonboon/Terrainy/issues/new?assignees=sempitern0&labels=%F0%9F%90%9B+bug&projects=&template=bug_report.md&title=">Report Bug</a>
 	·
-	<a href="https://github.com/sempitern0/terrainy/issues/new?assignees=sempitern0&labels=%E2%AD%90+feature&projects=&template=feature_request.md&title=">Request Features</a>
+	<a href="https://github.com/Dragonboon/Terrainy/issues/new?assignees=sempitern0&labels=%E2%AD%90+feature&projects=&template=feature_request.md&title=">Request Features</a>
   </p>
 </div>
 
@@ -81,7 +81,7 @@
 
 # 📦 Installation
 
-1. [Download Latest Release](https://github.com/sempitern0/terrainy/releases/latest)
+1. [Download Latest Release](https://github.com/Dragonboon/Terrainy/releases/latest)
 2. Unpack the `addons/terrainy` folder into your `/addons` folder within the Godot project
 3. Enable this addon within the Godot settings: `Project > Project Settings > Plugins`
 
@@ -91,9 +91,23 @@ To better understand what branch to choose from for which Godot version, please 
 |[![GodotEngine](https://img.shields.io/badge/Godot_4.5.x_stable-blue?logo=godotengine&logoColor=white)](https://godotengine.org/)|`main`|`1.x`|
 ---
 
+# Editor workflow
+
+This PR includes **Generate**, **Paint**, **Collision**, **Sculpt** and a finite
+**Grid** workflow in the 3D viewport palette. Start with a noise preset, preview
+its layout, then apply a grid and edit the generated tiles.
+
+- [Procedural grids, limits and seam behavior](docs/PROCEDURAL_GRID.md)
+- [Painting, sculpting, brush presets and persistence](docs/EDITOR_PAINTING.md)
+- [Repeatable checks and outstanding manual acceptance](docs/VALIDATION.md)
+
+The project declares Godot 4.7; the automated import and regression suite has
+also been run with **Godot 4.6 stable**. This does not certify every older
+Godot version or replace visual validation in the target editor.
+
 # Editor material painting
 
-Generate a terrain first, select its generated mesh, then choose **Paint Terrain** in the 3D editor toolbar. Paint RGBA vertex-color layers with Undo/Redo; save the scene to persist the result. See [Editor painting guide](docs/EDITOR_PAINTING.md). Regenerating a mesh replaces its painted colors. This intentionally stays simpler than Terrain3D/Terrabrush.
+Generate a terrain first, select its generated mesh, then choose **Paint** in the 3D viewport palette. Paint RGBA vertex-color layers with Undo/Redo; save the scene to persist the result. See [Editor painting guide](docs/EDITOR_PAINTING.md). Regenerating a mesh replaces its painted colors. This intentionally stays simpler than Terrain3D/Terrabrush.
 
 # Getting started 📝
 Creating a new terrain is as easy as adding the `Terrainy` node to your scene and configuring its parameters. The basic workflow involves assigning a `TerrainConfiguration` that will shape a `MeshInstance3D` into a Terrain by generating a new `ArrayMesh` for it. You have the flexibility to assign multiple mesh instances to the Terrainy node to generate all terrains simultaneously, either within the editor or at runtime.
@@ -103,13 +117,13 @@ To generate all currently configured terrains, simply select the `Terrainy` node
 
 
 ## Runtime
-Terrains can also be generated dynamically at runtime using the Terrainy node's dedicated generation function. This is an async process so to confirm and run code after it finish you need to awair or connect a callback to the signal `terrain_generation_finished`
+Terrains can also be generated dynamically at runtime using the Terrainy node's dedicated generation function. Connect to `terrain_generation_finished` before starting generation to receive completion. Pass the configured `terrains` dictionary explicitly; an empty dictionary does not start generation.
 
 
-```swift
+```gdscript
 signal terrain_generation_finished(terrains: Dictionary[MeshInstance3D, TerrainConfiguration])
 
-// Don't use procedural just yet even though it works, performance is not yet optimal
+# Legacy runtime procedural generation is experimental; see the editor Grid guide.
 func generate_terrains(
 	selected_terrains: Dictionary[MeshInstance3D, TerrainConfiguration] = {},
  	spawn_node: Node3D = procedural_terrain_spawn_node, 
@@ -141,7 +155,7 @@ A descriptive and readable name for this terrain, primarily for identification w
 An extended text field to provide additional context and detailed specifications about the characteristics or usage of this terrain resource.
 
 ### World offset
-An optional offset applied to the terrain's local position. This value shifts the terrain's origin relative to the parent node's transform *(i.e., its local coordinate system)* when it is spawned or instantiated in the scene.
+An offset in the XZ noise sampling domain. It changes which part of the noise field is sampled; it does not move the mesh node. Grid generation adds each tile's offset to the shared profile offset.
 
 ### Mesh resolution
 More resolution means more detail _(more dense vertex)_ in the terrain generation, this increases the mesh subdivisions and could reduce the performance in low-spec pcs.
@@ -383,4 +397,12 @@ A ready-to-use material is included at: `res://addons/terrainy/shaders/terrain/w
 
 # Procedural terrain *(Work in progress)*
 
+The **editor Grid** is a finite, editable layout with deterministic generation;
+see [Procedural Grid](docs/PROCEDURAL_GRID.md). The older runtime procedural
+renderer remains experimental and is a separate path, without the editor grid's
+shared-heightfield contract.
+
 # Runtime Brush *(Work in progress)*
+
+The runtime brush is separate from the editor Paint/Sculpt controller. The
+editor's grid propagation and Undo/Redo guarantees do not apply to it.

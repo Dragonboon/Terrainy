@@ -38,9 +38,15 @@ func _init(mesh: ArrayMesh) -> void:
 	step_z = (vertices[(stride - 1) * stride].z - min_z) / float(stride - 1)
 	if absf(step_x) < 0.00001 or absf(step_z) < 0.00001:
 		return
-	normals = arrays[Mesh.ARRAY_NORMAL]
-	colors = arrays[Mesh.ARRAY_COLOR]
-	influences = arrays[Mesh.ARRAY_TEX_UV2]
+	# Only regular row-major heightfields are supported by bounded editing/picking.
+	for z in range(stride):
+		for x in range(stride):
+			var point: Vector3 = vertices[z * stride + x]
+			if not is_equal_approx(point.x, min_x + x * step_x) or not is_equal_approx(point.z, min_z + z * step_z):
+				return
+	normals = arrays[Mesh.ARRAY_NORMAL] if arrays[Mesh.ARRAY_NORMAL] != null else PackedVector3Array()
+	colors = arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
+	influences = arrays[Mesh.ARRAY_TEX_UV2] if arrays[Mesh.ARRAY_TEX_UV2] != null else PackedVector2Array()
 	if colors.size() != vertices.size():
 		colors.resize(vertices.size())
 		colors.fill(Color(1.0, 0.0, 0.0, 0.0))
@@ -55,9 +61,8 @@ func _init(mesh: ArrayMesh) -> void:
 	valid = true
 
 
-## Clipping the ray to the terrain's XZ rectangle avoids iterating
-## every triangle. Traversing at half-cell steps cannot skip a grid cell
-## along this segment; repeated cells are visited only once.
+## Clip to XZ bounds, then traverse every crossed cell (2D DDA).
+## Fixed-distance sampling can miss arbitrarily short corner crossings.
 func intersect(local_from: Vector3, local_to: Vector3) -> Dictionary:
 	if not valid:
 		return {}
@@ -83,21 +88,26 @@ func intersect(local_from: Vector3, local_to: Vector3) -> Dictionary:
 			t1 = minf(t1, maxf(a, b))
 	if t1 < t0:
 		return {}
-	var horizontal_length: float = Vector2(direction.x, direction.z).length() * (t1 - t0)
-	var cell_size: float = minf(absf(step_x), absf(step_z))
-	var steps: int = clampi(int(ceil(horizontal_length / cell_size * 2.5)), 1, 8 * stride)
-	var previous_cell: int = -1
+	var p: Vector3 = local_from + direction * t0
+	var gx: int = clampi(int(floor((p.x - min_x) / step_x)), 0, stride - 2)
+	var gz: int = clampi(int(floor((p.z - min_z) / step_z)), 0, stride - 2)
+	var grid_dx: float = direction.x / step_x
+	var grid_dz: float = direction.z / step_z
+	var move_x: int = int(signf(grid_dx))
+	var move_z: int = int(signf(grid_dz))
+	var next_x: float = INF
+	var next_z: float = INF
+	var delta_x: float = INF
+	var delta_z: float = INF
+	if move_x != 0:
+		next_x = (min_x + (gx + (1 if move_x > 0 else 0)) * step_x - local_from.x) / direction.x
+		delta_x = absf(1.0 / grid_dx)
+	if move_z != 0:
+		next_z = (min_z + (gz + (1 if move_z > 0 else 0)) * step_z - local_from.z) / direction.z
+		delta_z = absf(1.0 / grid_dz)
 	var best_t: float = INF
 	var best_position: Vector3 = Vector3.ZERO
-	for sample_idx in range(steps + 1):
-		var t: float = lerpf(t0, t1, float(sample_idx) / float(steps))
-		var p: Vector3 = local_from + direction * t
-		var gx: int = clampi(int(floor((p.x - min_x) / step_x)), 0, stride - 2)
-		var gz: int = clampi(int(floor((p.z - min_z) / step_z)), 0, stride - 2)
-		var cell_id: int = gz * (stride - 1) + gx
-		if cell_id == previous_cell:
-			continue
-		previous_cell = cell_id
+	for cell in range(2 * stride + 2):
 		var i: int = gz * stride + gx
 		for triangle in range(2):
 			var a: int = i if triangle == 0 else i + 1
@@ -113,7 +123,29 @@ func intersect(local_from: Vector3, local_to: Vector3) -> Dictionary:
 			if hit_t >= 0.0 and hit_t <= 1.0 and hit_t < best_t:
 				best_t = hit_t
 				best_position = candidate
+		var crossing: float = minf(next_x, next_z)
+		if crossing > t1 or crossing == INF:
+			break
+		if next_x <= next_z:
+			gx += move_x
+			next_x += delta_x
+		else:
+			gz += move_z
+			next_z += delta_z
+		if gx < 0 or gx >= stride - 1 or gz < 0 or gz >= stride - 1:
+			break
 	return {"position": best_position} if best_t < INF else {}
+
+
+## Reject untouched tiles before allocating sculpt halos or visiting rows.
+func _brush_overlaps(center: Vector3, radius: float) -> bool:
+	var end_x: float = min_x + (stride - 1) * step_x
+	var end_z: float = min_z + (stride - 1) * step_z
+	var closest := Vector2(
+		clampf(center.x, minf(min_x, end_x), maxf(min_x, end_x)),
+		clampf(center.z, minf(min_z, end_z), maxf(min_z, end_z))
+	)
+	return closest.distance_squared_to(Vector2(center.x, center.z)) < radius * radius
 
 
 ## Inclusive vertex-index rectangle, clamped to the grid.
@@ -154,7 +186,7 @@ func _weight(point: Vector3, center: Vector3, radius: float, stamp: Image, organ
 
 
 func paint(center: Vector3, radius: float, strength: float, layer: int, stamp: Image) -> bool:
-	if not valid or radius <= 0.0 or layer < 0 or layer > 3:
+	if not valid or radius <= 0.0 or layer < 0 or layer > 3 or not _brush_overlaps(center, radius):
 		return false
 	var bounds: Rect2i = _brush_rect(center, radius)
 	var target_color: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -183,7 +215,9 @@ func sculpt(
 	operation: int, flatten_height: float, stamp: Image,
 	max_slope_degrees: float = 38.0
 ) -> bool:
-	if not valid or radius <= 0.0:
+	sculpt_changed = false
+	changed_bounds = Rect2i()
+	if not valid or radius <= 0.0 or strength <= 0.0 or operation < 0 or operation > 3 or not _brush_overlaps(center, radius):
 		return false
 	var bounds: Rect2i = _brush_rect(center, radius)
 	var original: Dictionary = {}
@@ -228,11 +262,8 @@ func sculpt(
 	_limit_new_slopes(bounds, original, operation, max_slope_degrees)
 	_update_normals(bounds)
 	dirty = true
-	if sculpt_changed:
-		changed_bounds = changed_bounds.merge(bounds)
-	else:
-		sculpt_changed = true
-		changed_bounds = bounds
+	sculpt_changed = true
+	changed_bounds = bounds
 	return true
 
 
@@ -313,14 +344,17 @@ func _limit_new_slopes(
 func _update_normals(bounds: Rect2i) -> void:
 	for z in range(maxi(0, bounds.position.y - 1), mini(stride, bounds.end.y + 1)):
 		for x in range(maxi(0, bounds.position.x - 1), mini(stride, bounds.end.x + 1)):
-			var i: int = z * stride + x
-			var left: float = vertices[z * stride + maxi(0, x - 1)].y
-			var right: float = vertices[z * stride + mini(stride - 1, x + 1)].y
-			var up: float = vertices[maxi(0, z - 1) * stride + x].y
-			var down: float = vertices[mini(stride - 1, z + 1) * stride + x].y
-			var width_x: float = absf(step_x) * float(2 if x > 0 and x < stride - 1 else 1)
-			var width_z: float = absf(step_z) * float(2 if z > 0 and z < stride - 1 else 1)
-			normals[i] = Vector3((left - right) / width_x, 1.0, (up - down) / width_z).normalized()
+			normals[z * stride + x] = _normal_at(x, z)
+
+
+func _normal_at(x: int, z: int) -> Vector3:
+	var left: float = vertices[z * stride + maxi(0, x - 1)].y
+	var right: float = vertices[z * stride + mini(stride - 1, x + 1)].y
+	var up: float = vertices[maxi(0, z - 1) * stride + x].y
+	var down: float = vertices[mini(stride - 1, z + 1) * stride + x].y
+	var width_x: float = step_x * float(2 if x > 0 and x < stride - 1 else 1)
+	var width_z: float = step_z * float(2 if z > 0 and z < stride - 1 else 1)
+	return Vector3((left - right) / width_x, 1.0, (up - down) / width_z).normalized()
 
 ## Seam synchronization uses these narrow helpers without replacing UV2/colors.
 func edge_needs_refresh(x: int, z: int) -> bool:
@@ -340,11 +374,12 @@ func set_edge_height(index: int, value: float) -> void:
 	var point: Vector3 = vertices[index]
 	point.y = value
 	vertices[index] = point
+	_update_normals(Rect2i(index % stride, index / stride, 1, 1))
 	dirty = true
 
 
 func refresh_edge_normal(x: int, z: int) -> void:
-	_update_normals(Rect2i(x, z, 1, 1))
+	normals[z * stride + x] = _normal_at(x, z)
 	dirty = true
 
 

@@ -33,3 +33,18 @@ Update user-facing docs and focused tests for behavior changes. Verify Godot imp
 ## Bounded-grid generation
 
 Grid generation samples and filters one shared heightfield before extracting editable tiles. Never introduce per-tile edge smoothing or independent randomization. Preview must stay transient, generated tiles must be scene-owned and externalized, and Apply must never overwrite painted terrain without explicit user action. Run `tests/terrain_grid_checks.gd` in Godot before merge.
+
+## Regression gate
+
+Run `python tools/run_checks.py --godot /path/to/godot` after editing grid,
+brush or editor integration code. It imports the plugin and runs all three
+headless suites with timeouts, treating Godot diagnostics as failures even if
+the engine exits with status zero. See `docs/VALIDATION.md` for coverage limits.
+
+- Shared corners must be resolved as one equivalence class, never pairwise.
+- Finish all neighborhood normal repairs before writing shared seam normals.
+- Reset sculpt dirty bounds per stamp, preserve original meshes for Undo/Redo,
+  and keep Paint/UV2 data intact when sculpting.
+- Do not use fixed-distance ray samples: corner crossings can be arbitrarily short.
+- Prepared grid parameters must be independent of subsequently edited presets.
+- SceneTree tests using global transforms must defer until nodes enter the tree.

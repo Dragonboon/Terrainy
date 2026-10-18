@@ -291,6 +291,8 @@ func _create_context() -> void:
 func _set_tool(mode: int) -> void:
 	if _busy:
 		return
+	# Finish the previous stroke before changing its mode/collision semantics.
+	painter.set_active(false)
 	tool = mode
 	for i in range(buttons.size()):
 		buttons[i].set_pressed_no_signal(i == tool)

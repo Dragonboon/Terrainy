@@ -85,6 +85,7 @@ func apply() -> void:
 	clear_preview()
 	active_root = Node3D.new()
 	active_root.name = "TerrainyGrid"
+	active_root.set_meta(&"terrainy_grid", true)
 	generator.add_child(active_root)
 	active_root.owner = plugin.get_editor_interface().get_edited_scene_root()
 	pending.clear()

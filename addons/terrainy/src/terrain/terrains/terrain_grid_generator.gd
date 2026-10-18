@@ -24,6 +24,8 @@ static func prepare(
 		return {"error": "Invalid tile dimensions."}
 	if layout < 0 or layout > 3:
 		return {"error": "Invalid layout."}
+	# Deferred tile construction must use the same settings as this heightfield.
+	profile = profile.duplicate(true) as TerrainNoiseConfiguration
 	var per_tile: int = mini(clampi(cells, 4, 128), int(MAX_SIDE_SAMPLES / maxi(columns, rows)))
 	var nx: int = columns * per_tile + 1
 	var nz: int = rows * per_tile + 1

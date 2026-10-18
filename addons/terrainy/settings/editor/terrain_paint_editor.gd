@@ -82,6 +82,10 @@ func update_hover(camera: Camera3D, mouse_position: Vector2) -> void:
 
 
 func repeat_held_stamp() -> void:
+	# Mouse release can occur outside the 3D viewport, bypassing forward_input.
+	if stroke_active and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_finish_stroke()
+		return
 	if not stroke_active or not is_instance_valid(target) or not hover_valid or _session == null:
 		return
 	var now: int = Time.get_ticks_msec()
@@ -108,7 +112,7 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 			if not _session.valid:
 				_session = null
 				return EditorPlugin.AFTER_GUI_INPUT_PASS
-			if sculpt_enabled and target.get_parent() != null and target.get_parent().name == "TerrainyGrid":
+			if sculpt_enabled and target.get_parent() != null and (target.get_parent().name == "TerrainyGrid" or target.get_parent().has_meta(&"terrainy_grid")):
 				_grid_session = GridSession.new()
 				_grid_session.setup(target, _session, stroke_origin)
 			stroke_active = true
@@ -137,6 +141,8 @@ func forward_input(camera: Camera3D, event: InputEvent) -> int:
 func _hit(camera: Camera3D, position: Vector2) -> Dictionary:
 	var ray_origin := camera.project_ray_origin(position)
 	var ray_end := ray_origin + camera.project_ray_normal(position) * camera.far
+	if _grid_session != null and not _grid_session.nodes.is_empty():
+		return _grid_session.intersect(ray_origin, ray_end)
 	if _session != null and _session.valid:
 		return _session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
 	# Use one cached mesh buffer even for hover; avoid scanning full triangle arrays.
@@ -159,7 +165,7 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 	var changed: bool = false
 	if sculpt_enabled:
 		if _grid_session != null and not _grid_session.nodes.is_empty():
-			changed = _grid_session.apply(target.to_global(local_position), radius, sculpt_strength, sculpt_operation, target.to_global(Vector3(0.0, flatten_height, 0.0)).y, _brush_image)
+			changed = _grid_session.apply(target.to_global(local_position), radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
 		else:
 			changed = _session.sculpt(local_position, radius, sculpt_strength, sculpt_operation, flatten_height, _brush_image)
 	else:
@@ -173,7 +179,7 @@ func _apply(local_position: Vector3, force: bool = false) -> void:
 
 
 func _flush_preview() -> void:
-	if _session == null or not _session.valid:
+	if _session == null or not _session.valid or not is_instance_valid(target):
 		return
 	if _grid_session == null and not _session.dirty:
 		return

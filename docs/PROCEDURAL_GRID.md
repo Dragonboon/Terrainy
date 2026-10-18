@@ -46,14 +46,18 @@ static collider at release. Paint remains per tile: material layers are not
 copied to adjacent meshes.
 
 The propagation contract applies only to equal-resolution regular grids with
-matching cell spacing; it does not automatically join arbitrary imported 3D
-meshes. Existing independent height edits cannot be reconciled without
-changing one of the surfaces. Save/reopen, corner seams and Undo/Redo need
-interactive Godot verification.
+matching cell spacing, local mesh origins and tile bases. Tile positions must
+lie on the same lattice and elevation; independently rotated, scaled or
+misaligned siblings are excluded. Transforming the whole grid is supported.
+New grids retain their identity through metadata when renamed; legacy grids
+still use the `TerrainyGrid` name. Arbitrary imported meshes are not joined. Existing independent height edits cannot be reconciled without
+changing one of the surfaces. Headless regressions cover corner seams, resource/scene reload and mesh
+Undo/Redo. Full editor input and collider Undo/Redo still need interactive
+verification; see [validation](VALIDATION.md).
 
 ## Limits, safety and feedback
 
-- 16 tiles maximum and 384 samples maximum per full grid axis.
+- 16 tiles maximum and 384 cells maximum (385 vertices) per full grid axis.
 - Previews are transient and lower-resolution; Apply regenerates with the
   preset's mesh resolution subject to these limits.
 - Generation is explicit. Only the final tile construction is deferred over
@@ -71,6 +75,19 @@ interactive Godot verification.
 - Adjacent edges coincide to within floating point tolerance, including normals.
 - No regeneration on loading a scene; preview does not survive save/reopen.
 - Preview has no physics; final tiles have collision if the resource enables it.
-- Edit tile A without changing mesh B or a preset source resource.
+- Paint tile A without changing tile B or the preset source resource.
+- Sculpt a shared edge/corner and verify all affected siblings change together.
 - Cancel during Apply leaves a usable partial grid.
 - Save and reopen final generated scene. Verify no `Too Large` errors.
+
+## Editing implementation
+
+Boundary groups are cached once per stroke, including four-way corners. Each
+stamp resolves heights first, repairs local normals second, then assigns the
+shared normals. This prevents a later edge repair from overwriting an earlier
+one. Dirty bounds are per stamp; distant tiles are rejected before sculpt halo
+allocation. Mesh uploads remain throttled, and collision is rebuilt on release.
+
+Picking traverses crossed grid cells rather than sampling a ray at fixed
+intervals. Preparation snapshots the resource so later preset edits cannot
+change the dimensions or material configuration halfway through deferred Apply.
