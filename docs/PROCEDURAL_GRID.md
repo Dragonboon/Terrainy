@@ -39,9 +39,17 @@ geometry between samples; on a shared edge whose collision resolution differs
 between patches, fine-grained physics coincidence is not guaranteed.
 
 For the best continuity, keep all blocks in a grid at the same visual and
-collision resolution. After manually sculpting an edge, adjacent tiles do
-**not** yet propagate changes to one another. Use Paint/Sculpt primarily away
-from seams until seam-locked multiselection editing exists.
+collision resolution. Sculpt now propagates brush strokes to compatible sibling tiles of the same
+`TerrainyGrid` parent, and reconciles shared-edge heights and normals. A stroke
+across multiple tiles uses one Undo/Redo action and updates each affected
+static collider at release. Paint remains per tile: material layers are not
+copied to adjacent meshes.
+
+The propagation contract applies only to equal-resolution regular grids with
+matching cell spacing; it does not automatically join arbitrary imported 3D
+meshes. Existing independent height edits cannot be reconciled without
+changing one of the surfaces. Save/reopen, corner seams and Undo/Redo need
+interactive Godot verification.
 
 ## Limits, safety and feedback
 
