@@ -1,24 +1,23 @@
-# Terrainy — editor example
+# Terrainy editor-only test scene
 
-Open `res://examples/terrain_lab/terrain_lab.tscn` and select Terrainy.
-The scene does not run a script or build terrain automatically.
+Open `res://examples/terrain_lab/terrain_lab.tscn`, select Terrainy, and use
+the vertical icons at bottom-left of the 3D editor.
 
-Use the **four icons at the bottom-left edge of the 3D viewport** to switch
-Cursor, Generate, Paint and Collision. Contextual settings appear in one
-horizontal strip along the bottom of the editor viewport.
+1. **Generate:** choose Soft hills, Highlands, Mountains, Island or Dunes.
+   Press + Mesh once and Generate. The auto texture biome now uses the actual
+   generated height range, with separate rock/grass/soil tints.
+2. **Biome debug:** enable the checkbox near the contextual controls to see
+   which terrain layers are active, independently of dirt texture color.
+3. **Paint:** choose the target mesh, one of four layers and a ready-to-use
+   brush stamp from the dropdown; or select any Texture2D as a custom stamp.
+4. **Sculpt:** Raise, Lower, Smooth and Flatten change terrain geometry.
+   Colllisions update after the stroke. Try Undo/Redo.
+5. **Collision:** choose whether to generate physical collision and set its
+   mesh resolution independently from visual terrain.
 
-In Generate choose a profile and click + Mesh and Generate. The five presets
-come with different relief/noise and with textured automatic biome rendering:
-altitude controls grass/soil/rock distribution, steep slopes favor rock,
-and triplanar textures and macro-variation reduce tiling.
+The contextual controls wrap on narrow screens instead of overflowing to the
+right. The cursor ring identifies Paint/ Sculpt mode, but is a screen-space
+marker rather than exact world-radius preview.
 
-In Paint, select a generated mesh, choose a layer and set radius/strength.
-The Texture2D resource picker accepts imported/custom brush masks, and ships
-with a default from `src/terrain/brush/textures/`. Painted layers blend
-with automatic heights and slopes. Use Undo/Redo and save your scene.
-
-In Collision, change independent physics resolution and rebuild explicitly.
-The previous inverted geometry must be regenerated to fix its triangle winding.
-Regeneration still discards manual edits.
-
-No play mode, background editor generation or streamer is involved.
+No runtime generation or automatic editor rebuild is present. Save the scene
+to keep edits; regenerating still resets vertex painting and sculpt edits.
