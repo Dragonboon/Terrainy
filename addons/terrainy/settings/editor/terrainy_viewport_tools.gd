@@ -5,6 +5,7 @@ extends RefCounted
 
 const Builder = preload("res://addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
+const Foundation = preload("res://addons/terrainy/src/terrain/terrains/underwater_foundation_builder.gd")
 const Procedural = preload("res://addons/terrainy/settings/editor/terrainy_procedural_tools.gd")
 const PRESET_ROOT := "res://addons/terrainy/presets/"
 const PRESETS := ["Soft hills", "Highlands", "Mountains", "Island", "Dunes"]
@@ -496,6 +497,8 @@ func _generate() -> void:
 		else:
 			_clear_collision(mesh)
 		var storage_error: Error = Storage.persist_terrain(mesh)
+		if storage_error == OK and current_profile is TerrainNoiseConfiguration:
+			_sync_underwater(mesh, current_profile as TerrainNoiseConfiguration)
 		_status("Generated %d cells/axis. Save scene." % result["resolution"] if storage_error == OK else "Generated, but resource export failed: %s" % error_string(storage_error))
 	else:
 		_status("Generation failed. Check Resource settings.")
@@ -808,3 +811,47 @@ func _change_material_texture(resource: Resource, slot: int) -> void:
 		_status("Texture updated but saving its resource failed: %s" % error_string(result))
 	else:
 		_status("%s texture updated. Paint with that material." % layer_select.get_item_text(slot))
+
+
+func _sync_underwater(mesh: MeshInstance3D, config: TerrainNoiseConfiguration) -> void:
+	var existing := mesh.get_node_or_null("UnderwaterFoundation") as MeshInstance3D
+	if not config.generate_underwater_foundation:
+		if existing != null:
+			existing.queue_free()
+		return
+	var size: int = Storage.mesh_resolution(mesh)
+	var heights: PackedFloat32Array = Storage.extract_heights(mesh.mesh as ArrayMesh, size)
+	if heights.is_empty():
+		_status("Underwater foundation requires a generated regular terrain grid.")
+		return
+	var result: Dictionary = Foundation.build(
+		heights, size + 1, size + 1,
+		float(config.size_width), float(config.size_depth), config
+	)
+	if result.get("error", ERR_INVALID_DATA) != OK:
+		_status("Unable to build underwater foundation.")
+		return
+	if existing == null:
+		existing = MeshInstance3D.new()
+		existing.name = "UnderwaterFoundation"
+		mesh.add_child(existing)
+		existing.owner = plugin.get_editor_interface().get_edited_scene_root()
+	existing.mesh = result["mesh"]
+	existing.add_to_group(&"terrainy_underwater", true)
+	var collider := existing.get_node_or_null("SeabedCollider/Shape") as CollisionShape3D
+	if result["collision"] != null:
+		if collider == null:
+			var body := StaticBody3D.new()
+			body.name = "SeabedCollider"
+			existing.add_child(body)
+			body.owner = plugin.get_editor_interface().get_edited_scene_root()
+			collider = CollisionShape3D.new()
+			collider.name = "Shape"
+			body.add_child(collider)
+			collider.owner = plugin.get_editor_interface().get_edited_scene_root()
+		collider.shape = result["collision"]
+	elif collider != null:
+		collider.get_parent().queue_free()
+	var saved: Error = Storage.persist_terrain(existing)
+	if saved != OK:
+		_status("Underwater foundation created but saving failed: %s" % error_string(saved))

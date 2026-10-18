@@ -5,6 +5,7 @@ extends RefCounted
 const GridBuilder = preload("res://addons/terrainy/src/terrain/terrains/terrain_grid_generator.gd")
 const OrganicBuilder = preload("res://addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd")
 const Storage = preload("res://addons/terrainy/settings/editor/terrain_storage.gd")
+const Foundation = preload("res://addons/terrainy/src/terrain/terrains/underwater_foundation_builder.gd")
 
 var plugin: EditorPlugin
 var generator: Terrainy
@@ -154,6 +155,32 @@ func _process_next(token: int) -> void:
 			body.add_child(collider)
 			collider.owner = plugin.get_editor_interface().get_edited_scene_root()
 			collider.shape = shape
+	# Each tile receives its own bounded seamount skirt; no full mirrored mesh.
+	if cfg.generate_underwater_foundation:
+		var foundation: Dictionary = Foundation.build(
+			result["heights"], int(prepared["cells"]) + 1, int(prepared["cells"]) + 1,
+			float(cfg.size_width), float(cfg.size_depth), cfg
+		)
+		if foundation.get("error", ERR_INVALID_DATA) == OK:
+			var seabed := MeshInstance3D.new()
+			seabed.name = "UnderwaterFoundation"
+			mesh_node.add_child(seabed)
+			seabed.owner = plugin.get_editor_interface().get_edited_scene_root()
+			seabed.mesh = foundation["mesh"]
+			seabed.add_to_group(&"terrainy_underwater", true)
+			if foundation["collision"] != null:
+				var seabed_body := StaticBody3D.new()
+				seabed_body.name = "SeabedCollider"
+				seabed.add_child(seabed_body)
+				seabed_body.owner = plugin.get_editor_interface().get_edited_scene_root()
+				var seabed_shape := CollisionShape3D.new()
+				seabed_shape.name = "Shape"
+				seabed_body.add_child(seabed_shape)
+				seabed_shape.owner = plugin.get_editor_interface().get_edited_scene_root()
+				seabed_shape.shape = foundation["collision"]
+			var seabed_save: Error = Storage.persist_terrain(seabed)
+			if seabed_save != OK:
+				_report("Underwater foundation save failed: %s" % error_string(seabed_save))
 	var save_error: Error = Storage.persist_terrain(mesh_node)
 	if save_error != OK:
 		_report("Tile %d,%d generated but saving failed: %s" % [coord.x, coord.y, error_string(save_error)])
