@@ -57,3 +57,26 @@ The old `generate_mirror`, `mirror_depth`, `mirror_offset`,
 fields remain in `TerrainConfiguration`. New underwater controls are added
 to `TerrainNoiseConfiguration` so old `.tres` resources and runtime users
 continue to load.
+
+
+## Organic coastline and generation assistant
+
+For an Island preset, Terrainy now combines a rounded seeded coastal mask
+with a submerged shoreline (roughly two local units below the configured
+sea level). The square editable vertex grid stays unchanged, while the visible
+shoreline forms a reproducible irregular silhouette. The undersea base keeps
+its first ring exactly on the terrain border and progressively rounds the
+expanded outer rings; low-order angular harmonics vary each side without
+high-frequency crumpling.
+
+**Generate New** in the editor defaults to **Vary**. On every click a new
+seed and bounded noise-frequency, gain, detail and slope variations are chosen.
+The exact effective configuration is stored on the generated mesh's
+`TerrainConfiguration` resource, with seed reported in the status line.
+Existing generated meshes are preserved (including manual painting and
+sculpting); the operation creates a new target instead of overwriting one.
+Turn **Vary** off to create another terrain using the last full effective
+configuration. The randomization does not apply to heightmap-only presets.
+
+The checkbox changes the single-terrain Generate workflow. Grid's existing
+explicit seeded workflow remains independent and deterministic.

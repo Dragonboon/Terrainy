@@ -28,6 +28,18 @@ func _initialize() -> void:
 		assert(absf(v.z - (-50.0 + float(point.y) * 100.0 / float(n - 1))) < 0.0001)
 	assert(verts.size() < 2 * n * n * 4, "Foundation should not duplicate full heightfield for each ring")
 	assert(verts[verts.size() - 1].y < 0.0, "Foundation bottom is not underwater")
+	# The first ring is exactly the source grid boundary; subsequent
+	# boundaries must not remain a scaled axis-aligned square.
+	var boundary_count: int = boundary.size()
+	var second_ring: Vector3 = verts[boundary_count + 1]
+	var second_grid: Vector3 = verts[1]
+	assert(absf(second_ring.x) > absf(second_grid.x) or absf(second_ring.z) > absf(second_grid.z), "Base must flare outward")
+	# Bottom-facing cap normals and the exterior wall must have nonzero area.
+	var triangles: PackedInt32Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_INDEX]
+	assert(triangles.size() > 0 and triangles.size() % 3 == 0)
+	var normals: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	for normal in normals:
+		assert(normal.length_squared() > 0.9, "Found a degenerate surface normal")
 	var copy := config.duplicate(true) as TerrainNoiseConfiguration
 	copy.underwater_collision = true
 	var with_physics: Dictionary = Builder.build(samples, n, n, 100.0, 100.0, copy)

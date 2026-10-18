@@ -52,7 +52,7 @@ The five bundled profiles, shader materials and brush masks live inside the addo
 
 ## Quick start: generate and edit a terrain
 
-1. In **Generate**, choose **Soft Hills** (or another preset), click **+ Mesh** once and then **Generate**.
+1. In **Generate New**, choose **Soft Hills** (or another preset), click **+ Mesh** once and then **Generate New**.
 2. Inspect the terrain in the 3D viewport. Use **Edit Profile** to change the underlying Resource, then generate again when ready.
 3. Select the generated `MeshInstance3D`, switch to **Sculpt**, and use Raise/Lower/Smooth/Flatten. Choose a supplied brush stamp or assign any `Texture2D`.
 4. Switch to **Paint**, select a material and paint immediately. The adjacent Texture2D field edits only that material; optional **Mix two materials** reveals secondary/proportion/variation settings over the automatic biome.
@@ -158,3 +158,13 @@ Before merging editor changes, also test: viewport tool visibility, mouse input,
 Terrainy is maintained as a focused, dependency-light editor addon. Bug reports and pull requests are welcome when they preserve a straightforward Godot workflow. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Developed by [sempitern0](https://github.com/sempitern0) within [Dragonboon](https://github.com/Dragonboon). Licensed under the [MIT License](LICENSE).
+
+### Explore generated variants
+
+**Generate New** automatically creates a new seed and modest configuration
+variations when **Vary** is checked. The seed appears in the editor status,
+and the resulting configuration is saved per mesh. Turning **Vary** off repeats
+the last effective profile. Existing terrain meshes are not overwritten by
+this exploration action; edited landscapes remain available for comparison.
+The Island preset also forms an irregular low coastal outline and a rounded
+volcanic seabed rather than a box-shaped underwater skirt.
