@@ -140,8 +140,8 @@ func _finish_stroke() -> void:
 		undo.add_do_property(target, "mesh", stroke_mesh)
 		undo.add_undo_property(target, "mesh", stroke_origin)
 		if sculpt_enabled and resolution > 0:
-			undo.add_do_method(target.set_meta.bind(&"terrainy_height_samples", new_heights))
-			undo.add_undo_method(target.set_meta.bind(&"terrainy_height_samples", old_heights))
+			undo.add_do_method(target, &"set_meta", &"terrainy_height_samples", new_heights)
+			undo.add_undo_method(target, &"set_meta", &"terrainy_height_samples", old_heights)
 			if collision_node != null:
 				undo.add_do_property(collision_node, "shape", new_collision)
 				undo.add_undo_property(collision_node, "shape", old_collision)
