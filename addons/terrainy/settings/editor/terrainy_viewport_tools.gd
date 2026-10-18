@@ -26,6 +26,10 @@ var tool_rows: Array[HFlowContainer] = []
 var profile_select: OptionButton
 var target_select: OptionButton
 var layer_select: OptionButton
+var material_pickers: Array[EditorResourcePicker] = []
+var secondary_select: OptionButton
+var secondary_mix_input: SpinBox
+var organic_variation_input: SpinBox
 var radius_input: SpinBox
 var strength_input: SpinBox
 var brush_picker: EditorResourcePicker
@@ -98,6 +102,7 @@ func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 		current_profile = generator.terrains[targets[0]]
 		profile_select.select(PRESETS.size())
 	procedural.set_context(generator, current_profile)
+	_sync_material_pickers()
 	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 
@@ -182,6 +187,27 @@ func _create_context() -> void:
 		layer_select.add_item(label)
 	layer_select.item_selected.connect(func(index: int): painter.layer = index)
 	paint_row.add_child(layer_select)
+	_add_label(paint_row, "Secondary")
+	secondary_select = OptionButton.new()
+	for material_name in ["Off", "Base", "Grass", "Rock", "Soil"]:
+		secondary_select.add_item(material_name)
+	secondary_select.item_selected.connect(func(i: int): painter.secondary_layer = i - 1)
+	paint_row.add_child(secondary_select)
+	_add_label(paint_row, "Mix")
+	secondary_mix_input = _spin(paint_row, 0.0, 1.0, 0.05, 0.35, "")
+	secondary_mix_input.value_changed.connect(func(v: float): painter.secondary_mix = v)
+	_add_label(paint_row, "Variation")
+	organic_variation_input = _spin(paint_row, 0.0, 1.0, 0.05, 0.3, "")
+	organic_variation_input.value_changed.connect(func(v: float): painter.organic_variation = v)
+	_add_label(paint_row, "Surface textures")
+	for slot in range(4):
+		var picker := EditorResourcePicker.new()
+		picker.base_type = "Texture2D"
+		picker.custom_minimum_size.x = 115
+		picker.tooltip_text = ["Base texture", "Grass texture", "Rock texture", "Soil texture"][slot]
+		picker.resource_changed.connect(_change_material_texture.bind(slot))
+		material_pickers.append(picker)
+		paint_row.add_child(picker)
 	_add_label(paint_row, "Radius")
 	radius_input = _spin(paint_row, 0.5, 128.0, 0.5, 12.0, " m")
 	radius_input.value_changed.connect(func(value: float): painter.radius = value)
@@ -356,6 +382,7 @@ func _refresh_targets() -> void:
 	var index := targets.find(selected_mesh)
 	target_select.select(index if index >= 0 else 0)
 	_sync_physics_ui()
+	_sync_material_pickers()
 
 
 func _on_target_changed(_index: int) -> void:
@@ -363,6 +390,7 @@ func _on_target_changed(_index: int) -> void:
 	if mesh != null and profile_select.selected == PRESETS.size() and generator.terrains.has(mesh):
 		current_profile = generator.terrains[mesh]
 	_sync_physics_ui()
+	_sync_material_pickers()
 	if tool == Tool.PAINT or tool == Tool.SCULPT:
 		_activate_paint_target()
 
@@ -576,3 +604,52 @@ func _select_custom_brush(resource: Resource) -> void:
 	sculpt_brush_presets.select(5)
 	brush_picker.edited_resource = resource
 	sculpt_brush_picker.edited_resource = resource
+
+
+const PAINT_TEXTURE_UNIFORMS := ["base_texture", "grass_texture", "rock_texture", "soil_texture"]
+
+
+func _sync_material_pickers() -> void:
+	if material_pickers.is_empty():
+		return
+	var mesh := _target()
+	var material: ShaderMaterial = null
+	if mesh != null and mesh.mesh != null and mesh.mesh.get_surface_count() > 0:
+		material = mesh.mesh.surface_get_material(0) as ShaderMaterial
+	for i in range(material_pickers.size()):
+		var texture: Texture2D = null
+		if material != null:
+			texture = material.get_shader_parameter(PAINT_TEXTURE_UNIFORMS[i]) as Texture2D
+		material_pickers[i].edited_resource = texture
+
+
+func _change_material_texture(resource: Resource, slot: int) -> void:
+	if slot < 0 or slot >= PAINT_TEXTURE_UNIFORMS.size():
+		return
+	var mesh := _target()
+	if mesh == null or not mesh.mesh is ArrayMesh:
+		_status("Generate a terrain before assigning surface textures.")
+		return
+	var previous := mesh.mesh as ArrayMesh
+	if previous.get_surface_count() != 1:
+		_status("Only single-surface terrains support this material editor.")
+		return
+	var source := previous.surface_get_material(0) as ShaderMaterial
+	if source == null or source.shader == null:
+		_status("This mesh needs the Terrainy four-layer ShaderMaterial.")
+		return
+	var cloned := source.duplicate(true) as ShaderMaterial
+	cloned.set_shader_parameter(PAINT_TEXTURE_UNIFORMS[slot], resource as Texture2D)
+	var replacement := ArrayMesh.new()
+	replacement.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, previous.surface_get_arrays(0))
+	replacement.surface_set_material(0, cloned)
+	var undo := plugin.get_undo_redo()
+	undo.create_action("Change Terrainy Surface Texture")
+	undo.add_do_property(mesh, "mesh", replacement)
+	undo.add_undo_property(mesh, "mesh", previous)
+	undo.commit_action()
+	var result: Error = Storage.persist_terrain(mesh)
+	if result != OK:
+		_status("Texture changed, but saving resource failed: %s" % error_string(result))
+	else:
+		_status("Surface texture assigned. Paint with the corresponding layer.")
