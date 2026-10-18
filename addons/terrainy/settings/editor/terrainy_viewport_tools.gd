@@ -19,7 +19,7 @@ var current_profile: TerrainConfiguration
 var tool: Tool = Tool.GENERATE
 var buttons: Array[Button] = []
 var palette: VBoxContainer
-var context: HBoxContainer
+var context: HFlowContainer
 var tool_rows: Array[HBoxContainer] = []
 var profile_select: OptionButton
 var target_select: OptionButton
