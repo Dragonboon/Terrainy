@@ -73,6 +73,7 @@ func set_context(value: Terrainy, mesh: MeshInstance3D) -> void:
 	_refresh_targets()
 	if generator_changed:
 		current_profile = null
+		profile_select.select(0)
 	if selected_mesh != null and generator.terrains.has(selected_mesh):
 		current_profile = generator.terrains[selected_mesh]
 		profile_select.select(PRESETS.size())
@@ -90,7 +91,7 @@ func _create_palette() -> void:
 	var group := ButtonGroup.new()
 	for data in [
 		["Cursor", "ToolSelect", "Selection — leave painting mode"],
-		["Generate", "Terrain", "Generate a natural terrain from a profile"],
+		["Generate", "MeshInstance3D", "Generate a natural terrain from a profile"],
 		["Paint", "Paint", "Paint one of four surface layers"],
 		["Collision", "CollisionShape3D", "Generate or adjust terrain collision"],
 	]:
@@ -187,7 +188,7 @@ func _create_context() -> void:
 func _set_tool(mode: int) -> void:
 	if _busy:
 		return
-	tool = mode as Tool
+	tool = mode
 	for i in range(buttons.size()):
 		buttons[i].set_pressed_no_signal(i == tool)
 	for i in range(tool_rows.size()):
