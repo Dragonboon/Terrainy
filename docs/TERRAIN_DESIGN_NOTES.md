@@ -24,7 +24,7 @@ principles but should not require streaming infrastructure for editor-generated
 terrain. Optional streaming is future work, after editing is stable.
 
 ## Remaining work
-- Save paint layers independently so they survive regeneration.
-- Accelerate brush intersections for dense meshes.
+- Save paint layers separately if future workflows require regeneration without losing hand-authored edits.
+- Profile the cached grid-ray traversal and throttled full-ArrayMesh uploads on dense terrains.
 - Test the new UI visually on Godot 4.7 and profile long strokes.
 - Provide clear warning when a high visual/collision resolution may be expensive.

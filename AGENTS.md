@@ -6,12 +6,12 @@ Scope: entire repository. Terrainy is a portable, intentionally small Godot 4 te
 
 | Change | Read first | Validate |
 | --- | --- | --- |
-| Editor integration | `addons/terrainy/plugin.gd`, `settings/editor/`, `settings/inspector/` | Import + viewport input and Undo/Redo |
-| Generation | `src/terrain/terrainy.gd`, `terrains/terrain_builder.gd` | Deterministic seed, geometry, normals, collision |
-| Configurations | `src/terrain/configurations/` | Serialized scene/resource compatibility |
-| Painting | `src/terrain/brush/`, `shaders/terrain/` | RGBA channels, material retention, save/reload |
-| Procedural multi-tile grid | `src/terrain/terrains/terrain_grid_generator.gd`, `settings/editor/terrainy_procedural_tools.gd` | Shared heights/normals, seed determinism, preview lifecycle, save/cancel |
-| Procedural chunks | `src/terrain/procedural_terrain_renderer.gd` | Chunk seams, negative coordinates, queue limits |
+| Editor integration | `addons/terrainy/plugin.gd`, `addons/terrainy/settings/editor/`, `addons/terrainy/settings/inspector/` | Import + viewport input and Undo/Redo |
+| Generation | `addons/terrainy/src/terrain/terrains/organic_terrain_builder.gd`, `addons/terrainy/src/terrain/terrains/terrain_grid_generator.gd` | Deterministic seed, geometry, normals, collision |
+| Configurations | `addons/terrainy/src/terrain/configurations/` | Serialized scene/resource compatibility |
+| Painting | `addons/terrainy/src/terrain/brush/`, `addons/terrainy/shaders/terrain/` | RGBA channels, material retention, save/reload |
+| Procedural multi-tile grid | `addons/terrainy/src/terrain/terrains/terrain_grid_generator.gd`, `addons/terrainy/settings/editor/terrainy_procedural_tools.gd` | Shared heights/normals, seed determinism, preview lifecycle, save/cancel |
+| Legacy runtime chunks | `src/terrain/procedural_terrain_renderer.gd` | Keep experimental API isolated from editor Grid; test only when changing it |
 | Public API | `README.md`, `docs/` | Installation-only copy of `addons/terrainy/` |
 
 Keep reads bounded to the owning module, its callers and tests. Inspect current branch/commit before writes. Avoid changing unrelated binary assets and imported Godot UID files.
@@ -21,8 +21,8 @@ Keep reads bounded to the owning module, its callers and tests. Inspect current 
 - `TerrainConfiguration` resources own generation parameters, not runtime mesh state.
 - `TerrainBuilder` owns heightfield sampling and mesh production.
 - `Terrainy` orchestrates generation, scene ownership, collision and completion notifications.
-- `TerrainVertexPainter` helper produces new meshes for isolated painting. The editor controller owns input and Undo/Redo.
-- A terrain's editor paint data lives in the scene mesh, and is replaced upon regeneration. Document this clearly.
+- `TerrainEditSession` caches editable grid buffers and limits brush updates; the editor controller owns input and Undo/Redo.
+- Generated mesh/collision are saved as external `.res` resources; manual paint weights live in the mesh and are replaced upon regeneration. Document this clearly.
 - Match `Nucleus` and `Nautica-survival` in determinism, world-space noise sampling and gradual natural silhouettes; do not copy their full systems or tie this addon to their classes.
 - Never mutate shared preset noise, materials or geometry behind consumers' backs. Keep configurable limits bounded and don't do heavy geometry work every frame without profiling.
 
