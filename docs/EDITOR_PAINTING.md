@@ -54,7 +54,8 @@ shader uniforms; arbitrary shader parameter layouts are not supported.
 ### Dual-material organic brush
 
 The Paint bar defaults to **one material**. Choose Base, Grass, Rock or Soil
-from the material dropdown, which shows the currently assigned texture icon.
+from a compact **text-only dropdown**. A separate fixed-size 28px thumbnail
+shows the selected texture without changing the dropdown or dock height.
 The adjacent Texture2D picker edits **only the selected material**, not all
 four slots. Clearing it restores the bundled example texture.
 
