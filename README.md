@@ -4,7 +4,7 @@
 <h3 align="center">Terrainy</h3>
 
   <p align="center">
-   Quickly create natural-looking terrain with customizable noise parameters. This tool is designed to create simple terrains that do not require manual painting
+   Quickly create natural-looking terrain with customizable noise parameters. Generate simple 3D terrain patches automatically, then optionally paint material layers in the Godot editor
 	<br />
 	·
 	<a href="https://github.com/sempitern0/terrainy/issues/new?assignees=sempitern0&labels=%F0%9F%90%9B+bug&projects=&template=bug_report.md&title=">Report Bug</a>
@@ -90,6 +90,10 @@ To better understand what branch to choose from for which Godot version, please 
 |---|---|--|
 |[![GodotEngine](https://img.shields.io/badge/Godot_4.5.x_stable-blue?logo=godotengine&logoColor=white)](https://godotengine.org/)|`main`|`1.x`|
 ---
+
+# Editor material painting
+
+Generate a terrain first, select its generated mesh, then choose **Paint Terrain** in the 3D editor toolbar. Paint RGBA vertex-color layers with Undo/Redo; save the scene to persist the result. See [Editor painting guide](docs/EDITOR_PAINTING.md). Regenerating a mesh replaces its painted colors. This intentionally stays simpler than Terrain3D/Terrabrush.
 
 # Getting started 📝
 Creating a new terrain is as easy as adding the `Terrainy` node to your scene and configuring its parameters. The basic workflow involves assigning a `TerrainConfiguration` that will shape a `MeshInstance3D` into a Terrain by generating a new `ArrayMesh` for it. You have the flexibility to assign multiple mesh instances to the Terrainy node to generate all terrains simultaneously, either within the editor or at runtime.
