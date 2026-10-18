@@ -24,6 +24,8 @@ var _brush_image: Image
 var stroke_origin: ArrayMesh
 var stroke_mesh: ArrayMesh
 var _session: RefCounted
+var _hover_session: RefCounted
+var _hover_mesh: ArrayMesh
 var _last_flush_ms: int = 0
 const PREVIEW_INTERVAL_MS: int = 120
 var stroke_active := false
@@ -54,6 +56,8 @@ func edit(object: Object) -> void:
 	if stroke_active:
 		_finish_stroke()
 	target = next_target
+	_hover_session = null
+	_hover_mesh = null
 	hover_valid = false
 
 
@@ -131,8 +135,11 @@ func _hit(camera: Camera3D, position: Vector2) -> Dictionary:
 	if _session != null and _session.valid:
 		return _session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
 	# Use one cached mesh buffer even for hover; avoid scanning full triangle arrays.
-	var preview_session := EditSession.new(target.mesh as ArrayMesh)
-	return preview_session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
+	var mesh := target.mesh as ArrayMesh
+	if _hover_session == null or _hover_mesh != mesh:
+		_hover_mesh = mesh
+		_hover_session = EditSession.new(mesh)
+	return _hover_session.intersect(target.to_local(ray_origin), target.to_local(ray_end))
 
 
 func _apply(local_position: Vector3, force: bool = false) -> void:
@@ -162,6 +169,8 @@ func _flush_preview() -> void:
 		return
 	stroke_mesh = _session.flush_mesh()
 	target.mesh = stroke_mesh
+	_hover_session = null
+	_hover_mesh = null
 
 
 func set_brush_texture(texture: Texture2D) -> void:
@@ -205,5 +214,7 @@ func _finish_stroke() -> void:
 	stroke_origin = null
 	stroke_mesh = null
 	_session = null
+	_hover_session = null
+	_hover_mesh = null
 	last_local_point = Vector3(INF, INF, INF)
 	last_mouse_point = Vector2(INF, INF)
